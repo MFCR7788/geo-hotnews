@@ -3,6 +3,7 @@ import { prisma } from '../db.js';
 import { searchTwitter } from '../services/twitter.js';
 import { searchBing, searchHackerNews, deduplicateResults } from '../services/search.js';
 import { searchSogou, searchBilibili, searchWeibo, detectAndFetchAccount } from '../services/chinaSearch.js';
+import { searchZhihu, searchZhihuKeyword, searchToutiao, searchRSSFeeds } from '../services/newsSources.js';
 import { analyzeContent, expandKeyword, preMatchKeyword } from '../services/ai.js';
 import { sendHotspotEmail } from '../services/email.js';
 import type { SearchResult } from '../types.js';
@@ -20,17 +21,29 @@ function filterByFreshness(results: SearchResult[]): SearchResult[] {
   });
 }
 
-// 按来源优先级排序：Twitter > 微博 > B站/账号内容 > 搜索引擎
+// 按来源优先级排序：Twitter > 微博/知乎 > 头条 > RSS > B站/账号内容 > 搜索引擎
 function prioritizeResults(results: SearchResult[]): SearchResult[] {
   const priorityMap: Record<string, number> = {
     twitter: 1,
     weibo: 2,
-    bilibili: 3,
-    hackernews: 4,
-    sogou: 5,
-    bing: 6,
-    google: 7,
-    duckduckgo: 8
+    zhihu: 2,
+    toutiao: 3,
+    '36kr': 3,
+    huxiu: 3,
+    sspai: 4,
+    ifanr: 4,
+    ithome: 4,
+    infoq: 4,
+    'mit-tr': 4,
+    cls: 4,
+    thepaper: 4,
+    'custom-rss': 4,
+    bilibili: 5,
+    hackernews: 5,
+    sogou: 6,
+    bing: 7,
+    google: 8,
+    duckduckgo: 9
   };
   return [...results].sort((a, b) => {
     return (priorityMap[a.source] || 99) - (priorityMap[b.source] || 99);
@@ -80,14 +93,22 @@ export async function runHotspotCheck(io: Server): Promise<void> {
         hackernewsResults,
         sogouResults,
         bilibiliResults,
-        weiboResults
+        weiboResults,
+        zhihuResults,
+        zhihuKwResults,
+        toutiaoResults,
+        rssResults
       ] = await Promise.allSettled([
         searchTwitter(keyword.text),
         searchBing(keyword.text),
         searchHackerNews(keyword.text),
         searchSogou(keyword.text),
         searchBilibili(keyword.text),
-        searchWeibo(keyword.text)
+        searchWeibo(keyword.text),
+        searchZhihu(keyword.text),
+        searchZhihuKeyword(keyword.text),
+        searchToutiao(keyword.text),
+        searchRSSFeeds(keyword.text)
       ]);
 
       const allResults: SearchResult[] = [];
@@ -104,7 +125,11 @@ export async function runHotspotCheck(io: Server): Promise<void> {
         { name: 'HackerNews', result: hackernewsResults },
         { name: 'Sogou', result: sogouResults },
         { name: 'Bilibili', result: bilibiliResults },
-        { name: 'Weibo', result: weiboResults }
+        { name: 'Weibo', result: weiboResults },
+        { name: '知乎热榜', result: zhihuResults },
+        { name: '知乎搜索', result: zhihuKwResults },
+        { name: '今日头条', result: toutiaoResults },
+        { name: 'RSS聚合', result: rssResults }
       ];
 
       for (const source of sources) {
@@ -123,11 +148,11 @@ export async function runHotspotCheck(io: Server): Promise<void> {
       console.log(`  Total: ${allResults.length} raw → ${uniqueResults.length} unique → ${freshResults.length} fresh (within ${MAX_AGE_HOURS}h)`);
 
       // 处理结果：Twitter 优先多给配额
-      // Twitter 最多处理 15 条，其他来源共享 10 条配额
+      // Twitter 最多处理 15 条，其他来源共享 20 条配额（增加了新数据源）
       let twitterProcessed = 0;
       let otherProcessed = 0;
       const TWITTER_QUOTA = 15;
-      const OTHER_QUOTA = 10;
+      const OTHER_QUOTA = 20;
 
       for (const item of sortedResults) {
         // 检查配额
