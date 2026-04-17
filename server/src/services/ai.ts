@@ -1,9 +1,69 @@
-import { OpenRouter } from '@openrouter/sdk';
+import axios from 'axios';
 import type { AIAnalysis } from '../types.js';
 
-const openRouter = new OpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY ?? ''
-});
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const DEFAULT_MODEL = 'deepseek/deepseek-v3.2';
+
+// 不走系统代理（Odcloud），直连 OpenRouter
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const noProxyAxios = axios.create({ proxy: false } as any);
+
+// ========== 原生 axios 封装 OpenRouter 调用 ==========
+
+interface OpenRouterMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+interface OpenRouterChoice {
+  message: {
+    role: string;
+    content: string;
+  };
+}
+
+interface OpenRouterResponse {
+  choices: OpenRouterChoice[];
+  error?: {
+    message: string;
+    code?: number;
+  };
+}
+
+async function callOpenRouter(
+  messages: OpenRouterMessage[],
+  options: { temperature?: number; maxTokens?: number; model?: string } = {}
+): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY not configured');
+
+  const response = await noProxyAxios.post<OpenRouterResponse>(
+    `${OPENROUTER_BASE_URL}/chat/completions`,
+    {
+      model: options.model ?? DEFAULT_MODEL,
+      messages,
+      temperature: options.temperature ?? 0.2,
+      max_tokens: options.maxTokens ?? 500
+    },
+    {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'http://localhost:3001',
+        'X-Title': 'YupiHotMonitor'
+      },
+      timeout: 30000
+    }
+  );
+
+  if (response.data.error) {
+    throw new Error(`OpenRouter error: ${response.data.error.message}`);
+  }
+
+  const content = response.data.choices?.[0]?.message?.content;
+  if (!content) throw new Error('OpenRouter returned empty content');
+  return content;
+}
 
 // ========== Query Expansion（查询扩展） ==========
 
@@ -30,9 +90,8 @@ export async function expandKeyword(keyword: string): Promise<string[]> {
   }
 
   try {
-    const result = await openRouter.chat.send({
-      model: 'deepseek/deepseek-v3.2',
-      messages: [
+    const responseContent = await callOpenRouter(
+      [
         {
           role: 'system',
           content: `你是一个搜索查询扩展专家。给定一个监控关键词，生成该关键词的变体和相关检索词，用于文本匹配。
@@ -53,12 +112,9 @@ export async function expandKeyword(keyword: string): Promise<string[]> {
           content: keyword
         }
       ],
-      temperature: 0.2,
-      maxTokens: 300
-    });
+      { temperature: 0.2, maxTokens: 300 }
+    );
 
-    const rawContent = result.choices[0]?.message?.content || '';
-    const responseContent = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent);
     const jsonMatch = responseContent.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       const parsed: string[] = JSON.parse(jsonMatch[0]);
@@ -69,7 +125,7 @@ export async function expandKeyword(keyword: string): Promise<string[]> {
       return expanded;
     }
   } catch (error) {
-    console.error('Query expansion failed:', error);
+    console.error('Query expansion failed:', error instanceof Error ? error.message : error);
   }
 
   // Fallback：使用基础核心词
@@ -167,9 +223,8 @@ export async function analyzeContent(content: string, keyword: string, preMatchR
   try {
     const prompt = buildAnalysisPrompt(keyword, matchResult);
 
-    const result = await openRouter.chat.send({
-      model: 'deepseek/deepseek-v3.2',
-      messages: [
+    const responseContent = await callOpenRouter(
+      [
         {
           role: 'system',
           content: prompt
@@ -179,13 +234,9 @@ export async function analyzeContent(content: string, keyword: string, preMatchR
           content: content.slice(0, 2000) // 限制内容长度
         }
       ],
-      temperature: 0.2, // 降低温度，提高判断一致性
-      maxTokens: 500
-    });
+      { temperature: 0.2, maxTokens: 500 }
+    );
 
-    const rawContent = result.choices[0]?.message?.content || '';
-    const responseContent = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent);
-    
     // 尝试解析 JSON
     const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -204,7 +255,7 @@ export async function analyzeContent(content: string, keyword: string, preMatchR
 
     throw new Error('Failed to parse AI response');
   } catch (error) {
-    console.error('AI analysis failed:', error);
+    console.error('AI analysis failed:', error instanceof Error ? error.message : error);
     // Fallback
     return {
       isReal: true,

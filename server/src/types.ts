@@ -2,7 +2,7 @@ export interface SearchResult {
   title: string;
   content: string;
   url: string;
-  source: 'twitter' | 'bing' | 'google' | 'duckduckgo' | 'hackernews' | 'sogou' | 'bilibili' | 'weibo';
+  source: 'twitter' | 'bing' | 'google' | 'duckduckgo' | 'hackernews' | 'sogou' | 'bilibili' | 'weibo' | 'zhihu' | 'toutiao' | '36kr' | 'huxiu' | 'sspai' | 'ifanr' | 'ithome' | 'infoq' | 'mit-tr' | 'cls' | 'thepaper' | 'custom-rss' | string;
   sourceId?: string;
   publishedAt?: Date;
   viewCount?: number;

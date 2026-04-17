@@ -3,6 +3,10 @@ import * as cheerio from 'cheerio';
 import crypto from 'crypto';
 import type { SearchResult } from '../types.js';
 
+// 不走系统代理的 axios 实例
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const noProxyAxios = axios.create({ proxy: false } as any);
+
 // User Agent 列表
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -43,7 +47,7 @@ export async function searchSogou(query: string): Promise<SearchResult[]> {
   await sogouLimiter.wait();
 
   try {
-    const response = await axios.get('https://www.sogou.com/web', {
+    const response = await noProxyAxios.get('https://www.sogou.com/web', {
       params: {
         query,
         ie: 'utf-8'
@@ -343,7 +347,7 @@ export async function searchWeibo(query: string): Promise<SearchResult[]> {
 
   try {
     // 使用微博热搜公开 API（无需登录）
-    const response = await axios.get('https://weibo.com/ajax/side/hotSearch', {
+    const response = await noProxyAxios.get('https://weibo.com/ajax/side/hotSearch', {
       headers: {
         'User-Agent': getRandomUserAgent(),
         'Accept': 'application/json',

@@ -2,6 +2,10 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import type { SearchResult } from '../types.js';
 
+// 不走系统代理的 axios 实例
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const noProxyAxios = axios.create({ proxy: false } as any);
+
 // User Agent 列表
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -41,7 +45,7 @@ export async function searchBing(query: string): Promise<SearchResult[]> {
   await bingLimiter.wait();
 
   try {
-    const response = await axios.get('https://www.bing.com/search', {
+    const response = await noProxyAxios.get('https://www.bing.com/search', {
       params: {
         q: query,
         count: 20
@@ -86,7 +90,7 @@ export async function searchGoogle(query: string): Promise<SearchResult[]> {
   await googleLimiter.wait();
 
   try {
-    const response = await axios.get('https://www.google.com/search', {
+    const response = await noProxyAxios.get('https://www.google.com/search', {
       params: {
         q: query,
         num: 20,
@@ -133,7 +137,7 @@ export async function searchDuckDuckGo(query: string): Promise<SearchResult[]> {
   await duckduckgoLimiter.wait();
 
   try {
-    const response = await axios.get('https://html.duckduckgo.com/html/', {
+    const response = await noProxyAxios.get('https://html.duckduckgo.com/html/', {
       params: {
         q: query
       },
@@ -203,7 +207,7 @@ export async function searchHackerNews(query: string): Promise<SearchResult[]> {
   try {
     // 使用 Algolia 提供的 HN 搜索 API
     const oneDayAgo = Math.floor((Date.now() - 24 * 3600 * 1000) / 1000);
-    const response = await axios.get<HNSearchResult>('https://hn.algolia.com/api/v1/search', {
+    const response = await noProxyAxios.get<HNSearchResult>('https://hn.algolia.com/api/v1/search', {
       params: {
         query: query,
         tags: 'story', // 只搜索故事，排除评论
