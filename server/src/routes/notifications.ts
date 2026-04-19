@@ -1,10 +1,14 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { prisma } from '../db.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
-// 获取所有通知
-router.get('/', async (req, res) => {
+// 所有通知路由都需要登录
+router.use(requireAuth);
+
+// 获取当前用户的通知
+router.get('/', async (req: Request, res: Response) => {
   try {
     const { page = '1', limit = '50', unreadOnly } = req.query;
 
@@ -12,7 +16,7 @@ router.get('/', async (req, res) => {
     const limitNum = parseInt(limit as string);
     const skip = (pageNum - 1) * limitNum;
 
-    const where: any = {};
+    const where: any = { userId: req.user!.userId };
     if (unreadOnly === 'true') {
       where.isRead = false;
     }
@@ -25,7 +29,7 @@ router.get('/', async (req, res) => {
         take: limitNum
       }),
       prisma.notification.count({ where }),
-      prisma.notification.count({ where: { isRead: false } })
+      prisma.notification.count({ where: { userId: req.user!.userId, isRead: false } })
     ]);
 
     res.json({
@@ -45,28 +49,33 @@ router.get('/', async (req, res) => {
 });
 
 // 标记为已读
-router.patch('/:id/read', async (req, res) => {
+router.patch('/:id/read', async (req: Request, res: Response) => {
   try {
+    // 确认是本用户的通知
+    const existing = await prisma.notification.findFirst({
+      where: { id: req.params.id as string, userId: req.user!.userId }
+    });
+    if (!existing) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+
     const notification = await prisma.notification.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { isRead: true }
     });
 
     res.json(notification);
   } catch (error: any) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ error: 'Notification not found' });
-    }
     console.error('Error marking notification as read:', error);
     res.status(500).json({ error: 'Failed to mark as read' });
   }
 });
 
 // 全部标记为已读
-router.patch('/read-all', async (req, res) => {
+router.patch('/read-all', async (req: Request, res: Response) => {
   try {
     await prisma.notification.updateMany({
-      where: { isRead: false },
+      where: { userId: req.user!.userId, isRead: false },
       data: { isRead: true }
     });
 
@@ -78,26 +87,27 @@ router.patch('/read-all', async (req, res) => {
 });
 
 // 删除通知
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    await prisma.notification.delete({
-      where: { id: req.params.id }
+    const existing = await prisma.notification.findFirst({
+      where: { id: req.params.id as string, userId: req.user!.userId }
     });
-
-    res.status(204).send();
-  } catch (error: any) {
-    if (error.code === 'P2025') {
+    if (!existing) {
       return res.status(404).json({ error: 'Notification not found' });
     }
+
+    await prisma.notification.delete({ where: { id: req.params.id as string } });
+    res.status(204).send();
+  } catch (error: any) {
     console.error('Error deleting notification:', error);
     res.status(500).json({ error: 'Failed to delete notification' });
   }
 });
 
-// 清空所有通知
-router.delete('/', async (req, res) => {
+// 清空当前用户所有通知
+router.delete('/', async (req: Request, res: Response) => {
   try {
-    await prisma.notification.deleteMany({});
+    await prisma.notification.deleteMany({ where: { userId: req.user!.userId } });
     res.json({ message: 'All notifications deleted' });
   } catch (error) {
     console.error('Error clearing notifications:', error);

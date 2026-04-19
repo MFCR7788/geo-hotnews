@@ -234,13 +234,14 @@ export async function runHotspotCheck(io: Server): Promise<void> {
           else otherProcessed++;
           console.log(`  ✅ New hotspot [${item.source}]: ${hotspot.title.slice(0, 40)}... (${analysis.importance})`);
 
-          // 创建通知
+          // 创建通知（发给关键词所属用户）
           await prisma.notification.create({
             data: {
               type: 'hotspot',
               title: `发现新热点: ${hotspot.title.slice(0, 50)}`,
               content: analysis.summary || hotspot.content.slice(0, 100),
-              hotspotId: hotspot.id
+              hotspotId: hotspot.id,
+              userId: keyword.userId
             }
           });
 

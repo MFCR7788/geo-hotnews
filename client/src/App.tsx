@@ -6,7 +6,8 @@ import {
   Zap, TrendingUp, Twitter, Globe, Eye, Activity, Clock, Target,
   ChevronLeft, ChevronRight,
   MessageCircle, Repeat2, Quote, User, Shield, ShieldAlert,
-  ChevronDown, ChevronUp, ChevronsUpDown, ThermometerSun, FileText
+  ChevronDown, ChevronUp, ChevronsUpDown, ThermometerSun, FileText,
+  Settings, LogOut, Crown
 } from 'lucide-react';
 import { 
   keywordsApi, hotspotsApi, notificationsApi, triggerHotspotCheck,
@@ -20,6 +21,12 @@ import { Meteors } from './components/ui/meteors';
 import FilterSortBar, { defaultFilterState, type FilterState } from './components/FilterSortBar';
 import { sortHotspots } from './utils/sortHotspots';
 import { relativeTime, formatDateTime } from './utils/relativeTime';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import SettingsPage from './pages/SettingsPage';
+import AdminPage from './pages/AdminPage';
 // TextGenerateEffect available for future use
 
 /** 计算热度综合指标（归一化 0-100） */
@@ -46,6 +53,10 @@ function getHeatLevel(score: number): { label: string; color: string } {
 }
 
 function App() {
+  const { user, isLoading, isLoggedIn, logout } = useAuth();
+  const [authPage, setAuthPage] = useState<'login' | 'register' | 'forgot'>('login');
+  const [showSettings, setShowSettings] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [hotspots, setHotspots] = useState<Hotspot[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -68,6 +79,83 @@ function App() {
   const [expandedReasons, setExpandedReasons] = useState<Set<string>>(new Set());
   const [expandedContents, setExpandedContents] = useState<Set<string>>(new Set());
   const [allReasonsExpanded, setAllReasonsExpanded] = useState(false);
+
+  // 加载数据
+  const loadData = useCallback(async () => {
+    if (!isLoggedIn) return;
+    setIsLoading(true);
+    try {
+      const filterParams: Record<string, string | number> = {
+        limit: 20,
+        page: currentPage,
+      };
+      // Apply dashboard filters
+      if (dashboardFilters.source) filterParams.source = dashboardFilters.source;
+      if (dashboardFilters.importance) filterParams.importance = dashboardFilters.importance;
+      if (dashboardFilters.keywordId) filterParams.keywordId = dashboardFilters.keywordId;
+      if (dashboardFilters.timeRange) filterParams.timeRange = dashboardFilters.timeRange;
+      if (dashboardFilters.isReal) filterParams.isReal = dashboardFilters.isReal;
+      if (dashboardFilters.sortBy) filterParams.sortBy = dashboardFilters.sortBy;
+      if (dashboardFilters.sortOrder) filterParams.sortOrder = dashboardFilters.sortOrder;
+
+      const [keywordsData, hotspotsData, statsData, notifData] = await Promise.all([
+        keywordsApi.getAll(),
+        hotspotsApi.getAll(filterParams as any),
+        hotspotsApi.getStats(),
+        notificationsApi.getAll({ limit: 20 })
+      ]);
+      setKeywords(keywordsData);
+      setHotspots(hotspotsData.data);
+      setTotalPages(hotspotsData.pagination.totalPages);
+      setStats(statsData);
+      setNotifications(notifData.data);
+      setUnreadCount(notifData.unreadCount);
+
+      // 订阅关键词
+      const activeKeywords = keywordsData.filter(k => k.isActive).map(k => k.text);
+      if (activeKeywords.length > 0) {
+        subscribeToKeywords(activeKeywords);
+      }
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoggedIn, dashboardFilters, currentPage]);
+
+  // 认证加载中/未登录 → 显示认证页面
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#050510] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    if (authPage === 'login') {
+      return (
+        <LoginPage
+          onSwitchToRegister={() => setAuthPage('register')}
+          onForgotPassword={() => setAuthPage('forgot')}
+        />
+      );
+    }
+    if (authPage === 'register') {
+      return (
+        <RegisterPage
+          onSwitchToLogin={() => setAuthPage('login')}
+        />
+      );
+    }
+    if (authPage === 'forgot') {
+      return (
+        <ForgotPasswordPage
+          onBack={() => setAuthPage('login')}
+        />
+      );
+    }
+  }
 
   // 加载数据
   const loadData = useCallback(async () => {
@@ -119,6 +207,11 @@ function App() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // 登出
+  const handleLogout = async () => {
+    await logout();
+  };
 
   // WebSocket 事件
   useEffect(() => {
@@ -360,19 +453,28 @@ function App() {
             {/* Logo */}
             <div className="flex items-center gap-4">
               <div className="relative">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                  <Flame className="w-5 h-5 text-white" />
-                </div>
-                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-[#050510] animate-pulse" />
+                <img src="/logo.png" alt="MFCR" className="w-10 h-10 rounded-xl object-contain shadow-lg shadow-blue-500/20" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-white tracking-tight">HotPulse</h1>
-                <p className="text-xs text-slate-500">AI 热点雷达</p>
+                <h1 className="text-lg font-semibold text-white tracking-tight">MFCR-HotNews</h1>
+                <p className="text-xs text-slate-500">热点监控系统</p>
               </div>
             </div>
 
             {/* Actions */}
             <div className="flex items-center gap-3">
+              {/* 管理员后台入口 */}
+              {user?.role === 'admin' && (
+                <motion.button
+                  onClick={() => setShowAdmin(true)}
+                  whileHover={{ scale: 1.02 }}
+                  className="px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-all"
+                >
+                  <Crown className="w-4 h-4" />
+                  管理后台
+                </motion.button>
+              )}
+
               <motion.button
                 onClick={handleManualCheck}
                 disabled={isChecking}
@@ -437,10 +539,40 @@ function App() {
                   )}
                 </AnimatePresence>
               </div>
+
+              {/* 用户菜单 */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all"
+                >
+                  <Settings className="w-4 h-4 text-slate-400" />
+                  <span className="text-slate-400 text-sm">{user?.name || user?.email?.split('@')[0]}</span>
+                </button>
+              </div>
+
+              {/* 登出 */}
+              <button
+                onClick={handleLogout}
+                className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-slate-500 hover:text-red-400"
+                title="登出"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
       </header>
+
+      {/* 设置弹窗 */}
+      {showSettings && (
+        <SettingsPage onClose={() => setShowSettings(false)} />
+      )}
+
+      {/* 管理员后台弹窗 */}
+      {showAdmin && (
+        <AdminPage onClose={() => setShowAdmin(false)} />
+      )}
 
       {/* Main Content */}
       <main className="relative z-10 max-w-6xl mx-auto px-6 py-8">
@@ -1119,4 +1251,12 @@ function App() {
   );
 }
 
-export default App;
+function AppWrapper() {
+  return (
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  );
+}
+
+export default AppWrapper;

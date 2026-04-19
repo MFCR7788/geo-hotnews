@@ -1,5 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// MFCR-HotNews Prisma Schema
+// Multi-tenant user authentication + personalization
 
 generator client {
   provider = "prisma-client-js"
@@ -10,14 +10,87 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============ 用户认证相关 ============
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  password     String   // bcrypt 加密后的密码
+  name         String?  // 用户昵称
+  role         String   @default("user") // user | admin
+  isBanned     Boolean  @default(false)
+  isEmailVerified Boolean @default(false)
+  emailVerifyToken  String?  // 邮箱验证 Token
+  resetToken       String?  // 密码重置 Token
+  resetTokenExp    DateTime? // 密码重置 Token 过期时间
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // 关联
+  keywords     Keyword[]
+  notifications Notification[]
+  settings     UserSettings?
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model UserSettings {
+  id          String  @id @default(uuid())
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Logo 定制
+  logoUrl     String? // ImgBB 返回的 URL
+
+  // 主题定制
+  themeMode   String  @default("dark") // dark | light
+  themeColor  String  @default("#3b82f6") // 主题色（HEX）
+
+  // 数据源偏好（逗号分隔）
+  sourcePrefs String  @default("twitter,weibo,zhihu,toutiao,bilibili")
+
+  // 过滤/排序偏好
+  defaultImportance String @default("") // 空=全部，否则 low/medium/high/urgent
+  defaultTimeRange  String @default("7d")
+  defaultSortBy     String @default("createdAt")
+  defaultSortOrder  String @default("desc")
+  defaultSource     String @default("")
+  showOnlyReal      Boolean @default(false) // 只看真实热点
+
+  // 通知偏好
+  notifyEmail  Boolean @default(true)
+  notifyWeb    Boolean @default(true)
+  notifyHighOnly Boolean @default(true) // 只通知高优先级
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============ 原有数据模型（已关联用户） ============
+
 model Keyword {
   id        String    @id @default(uuid())
-  text      String    @unique
+  text      String
   category  String?
   isActive  Boolean   @default(true)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  // 用户关联
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   hotspots  Hotspot[]
+
+  @@unique([text, userId]) // 同用户在关键词上唯一
 }
 
 model Hotspot {
@@ -25,8 +98,8 @@ model Hotspot {
   title           String
   content         String
   url             String
-  source          String    // twitter, bing, google
-  sourceId        String?   // 原始推文ID等
+  source          String    // twitter, bing, google, weibo, zhihu, toutiao 等
+  sourceId        String?   // 原始内容ID
   isReal          Boolean   @default(true)
   relevance       Int       @default(0)
   relevanceReason String?   // AI 分析相关性的理由
@@ -36,17 +109,19 @@ model Hotspot {
   viewCount       Int?
   likeCount       Int?
   retweetCount    Int?
-  replyCount      Int?      // 回复数
-  commentCount    Int?      // 评论数
-  quoteCount      Int?      // 引用/转引数
-  danmakuCount    Int?      // 弹幕数 (Bilibili)
-  authorName      String?   // 作者名称
-  authorUsername  String?   // 作者用户名
-  authorAvatar    String?   // 作者头像
-  authorFollowers Int?      // 作者粉丝数
-  authorVerified  Boolean?  // 作者是否认证
+  replyCount      Int?
+  commentCount    Int?
+  quoteCount      Int?
+  danmakuCount    Int?
+  authorName      String?
+  authorUsername  String?
+  authorAvatar    String?
+  authorFollowers Int?
+  authorVerified  Boolean?
   publishedAt     DateTime?
   createdAt       DateTime  @default(now())
+
+  // 通过 keywordId 关联（keyword 再关联到 user）
   keywordId       String?
   keyword         Keyword?  @relation(fields: [keywordId], references: [id], onDelete: SetNull)
 
@@ -61,6 +136,10 @@ model Notification {
   isRead    Boolean  @default(false)
   hotspotId String?
   createdAt DateTime @default(now())
+
+  // 用户关联
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Setting {
