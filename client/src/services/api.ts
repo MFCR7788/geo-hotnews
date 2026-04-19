@@ -1,3 +1,5 @@
+import { tokenStore } from './auth.js';
+
 const API_BASE = '/api';
 
 export interface Keyword {
@@ -58,9 +60,11 @@ export interface Stats {
 }
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const accessToken = tokenStore.getAccessToken();
   const response = await fetch(`${API_BASE}${endpoint}`, {
     headers: {
       'Content-Type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...options.headers
     },
     ...options

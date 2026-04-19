@@ -10,6 +10,9 @@ import keywordsRouter from './routes/keywords.js';
 import hotspotsRouter from './routes/hotspots.js';
 import settingsRouter from './routes/settings.js';
 import notificationsRouter from './routes/notifications.js';
+import authRouter from './routes/auth.js';
+import adminRouter from './routes/admin.js';
+import { apiLimiter, loginLimiter, registerLimiter } from './middleware/rateLimit.js';
 import { runHotspotCheck } from './jobs/hotspotChecker.js';
 
 dotenv.config();
@@ -24,21 +27,38 @@ const io = new Server(httpServer, {
 });
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true
+}));
+app.use(express.json({ limit: '10mb' }));
 
-// Routes
+// 全局 API 限流（健康检查除外）
+app.use('/api', (req, res, next) => {
+  if (req.path === '/health') return next();
+  return apiLimiter(req, res, next);
+});
+
+// 认证路由（带独立限流）
+app.use('/api/auth/register', registerLimiter);
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth', authRouter);
+
+// 业务路由
 app.use('/api/keywords', keywordsRouter);
 app.use('/api/hotspots', hotspotsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/notifications', notificationsRouter);
+
+// 管理员路由
+app.use('/api/admin', adminRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Manual trigger for hotspot check
+// Manual trigger for hotspot check（需要登录才能触发）
 app.post('/api/check-hotspots', async (req, res) => {
   try {
     await runHotspotCheck(io);
@@ -51,6 +71,12 @@ app.post('/api/check-hotspots', async (req, res) => {
 // WebSocket connection handling
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
+
+  // 用户加入自己的房间（基于 userId）
+  socket.on('join', (userId: string) => {
+    socket.join(`user:${userId}`);
+    console.log(`Socket ${socket.id} joined user room: ${userId}`);
+  });
 
   socket.on('subscribe', (keywords: string[]) => {
     keywords.forEach(kw => socket.join(`keyword:${kw}`));
@@ -84,9 +110,10 @@ const PORT = process.env.PORT || 3001;
 
 httpServer.listen(PORT, () => {
   console.log(`
-  🔥 热点监控服务启动成功!
+  🔥 MFCR-HotNews 服务启动成功!
   📡 Server running on http://localhost:${PORT}
   🔌 WebSocket ready
+  🔒 用户认证系统已启用
   ⏰ Hotspot check scheduled every 30 minutes
   `);
 });
