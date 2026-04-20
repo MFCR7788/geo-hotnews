@@ -77,7 +77,14 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
                 <CheckCircle className="w-8 h-8 text-emerald-400" />
               </div>
               <h3 className="text-white font-semibold text-lg mb-2">注册成功！</h3>
-              <p className="text-slate-400 text-sm mb-6">正在跳转到主页...</p>
+              <p className="text-slate-400 text-sm mb-6">请返回登录页面登录</p>
+              <button
+                onClick={onSwitchToLogin}
+                className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-medium py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+              >
+                <Zap className="w-4 h-4" />
+                返回登录
+              </button>
             </motion.div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">

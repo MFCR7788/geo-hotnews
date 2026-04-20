@@ -249,35 +249,37 @@ describe.skipIf(!HAS_API_KEY)('AI 相关性判断准确度（真实 AI 调用）
 // ========== 无 API 时的 fallback 行为测试 ==========
 
 describe('AI Fallback 行为（无 API Key）', () => {
-  it('preMatch=true 时 fallback 给出较高默认分', async () => {
+  it('preMatch=true 时 fallback 给出较高默认分（75分）', async () => {
     // 临时清空 API key 测试 fallback
     const originalKey = process.env.OPENROUTER_API_KEY;
     process.env.OPENROUTER_API_KEY = '';
-    
+
     try {
       const result = await analyzeContent(
         'Claude Sonnet 4.6 is amazing',
         'Claude Sonnet 4.6',
         { matched: true, matchedTerms: ['Claude Sonnet 4.6'] }
       );
-      expect(result.relevance).toBe(50);
+      // 【修复】matched=75，给予更高的相关性分数
+      expect(result.relevance).toBe(75);
       expect(result.keywordMentioned).toBe(true);
     } finally {
       process.env.OPENROUTER_API_KEY = originalKey || '';
     }
   });
 
-  it('preMatch=false 时 fallback 给出较低默认分', async () => {
+  it('preMatch=false 时 fallback 给出适中默认分（55>=50阈值）', async () => {
     const originalKey = process.env.OPENROUTER_API_KEY;
     process.env.OPENROUTER_API_KEY = '';
-    
+
     try {
       const result = await analyzeContent(
         '今天天气真好',
         'Claude Sonnet 4.6',
         { matched: false, matchedTerms: [] }
       );
-      expect(result.relevance).toBe(20);
+      // 【修复】放宽阈值：unmatched=55，让内容能通过过滤
+      expect(result.relevance).toBe(55);
       expect(result.keywordMentioned).toBe(false);
     } finally {
       process.env.OPENROUTER_API_KEY = originalKey || '';

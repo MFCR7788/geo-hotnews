@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Flame, Search, Plus, Bell, Trash2, 
-  ExternalLink, RefreshCw, X, Check, AlertTriangle,
+  ExternalLink, X, Check, AlertTriangle,
   Zap, TrendingUp, Twitter, Globe, Eye, Activity, Clock, Target,
   ChevronLeft, ChevronRight,
   MessageCircle, Repeat2, Quote, User, Shield, ShieldAlert,
@@ -11,7 +11,9 @@ import {
 } from 'lucide-react';
 import { 
   keywordsApi, hotspotsApi, notificationsApi, triggerHotspotCheck,
-  type Keyword, type Hotspot, type Stats, type Notification
+  keywordLibraryApi,
+  type Hotspot, type Stats, type Notification,
+  type UserKeyword, type LibraryKeyword
 } from './services/api';
 import { onNewHotspot, onNotification, subscribeToKeywords } from './services/socket';
 import { cn } from './lib/utils';
@@ -27,6 +29,9 @@ import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
+import PricingPage from './pages/PricingPage';
+import SubscriptionPage from './pages/SubscriptionPage';
+import BillingPage from './pages/BillingPage';
 // TextGenerateEffect available for future use
 
 /** 计算热度综合指标（归一化 0-100） */
@@ -54,10 +59,14 @@ function getHeatLevel(score: number): { label: string; color: string } {
 
 function App() {
   const { user, isLoading, isLoggedIn, logout } = useAuth();
+  console.log('[App] Render - isLoading:', isLoading, 'isLoggedIn:', isLoggedIn, 'user:', user ? user.email : null);
   const [authPage, setAuthPage] = useState<'login' | 'register' | 'forgot'>('login');
   const [showSettings, setShowSettings] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
-  const [keywords, setKeywords] = useState<Keyword[]>([]);
+  const [showPricing, setShowPricing] = useState(false);
+  const [showSubscription, setShowSubscription] = useState(false);
+  const [showBilling, setShowBilling] = useState(false);
+  const [keywords, setKeywords] = useState<UserKeyword[]>([]);
   const [hotspots, setHotspots] = useState<Hotspot[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -65,8 +74,8 @@ function App() {
   
   const [newKeyword, setNewKeyword] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
+  // isLoading 来自 useAuth()，isDataLoading 为数据加载状态
+  const [isDataLoading, setIsDataLoading] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'keywords' | 'search'>('dashboard');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -79,11 +88,19 @@ function App() {
   const [expandedReasons, setExpandedReasons] = useState<Set<string>>(new Set());
   const [expandedContents, setExpandedContents] = useState<Set<string>>(new Set());
   const [allReasonsExpanded, setAllReasonsExpanded] = useState(false);
+  // 关键词 tab 专用：选中关键词 & 该词热点
+  const [selectedKeywordId, setSelectedKeywordId] = useState<string | null>(null);
+  const [keywordHotspots, setKeywordHotspots] = useState<Hotspot[]>([]);
+  const [keywordPage, setKeywordPage] = useState(1);
+  const [keywordTotalPages, setKeywordTotalPages] = useState(1);
+  // 系统词库
+  const [libraryKeywords, setLibraryKeywords] = useState<LibraryKeyword[]>([]);
+  const [selectedLibraryKeyword, setSelectedLibraryKeyword] = useState<string>('');
 
   // 加载数据
   const loadData = useCallback(async () => {
     if (!isLoggedIn) return;
-    setIsLoading(true);
+    setIsDataLoading(true);
     try {
       const filterParams: Record<string, string | number> = {
         limit: 20,
@@ -99,7 +116,7 @@ function App() {
       if (dashboardFilters.sortOrder) filterParams.sortOrder = dashboardFilters.sortOrder;
 
       const [keywordsData, hotspotsData, statsData, notifData] = await Promise.all([
-        keywordsApi.getAll(),
+        keywordsApi.getSubscribed(),
         hotspotsApi.getAll(filterParams as any),
         hotspotsApi.getStats(),
         notificationsApi.getAll({ limit: 20 })
@@ -119,105 +136,68 @@ function App() {
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
-      setIsLoading(false);
+      setIsDataLoading(false);
     }
   }, [isLoggedIn, dashboardFilters, currentPage]);
 
-  // 认证加载中/未登录 → 显示认证页面
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#050510] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!isLoggedIn) {
-    if (authPage === 'login') {
-      return (
-        <LoginPage
-          onSwitchToRegister={() => setAuthPage('register')}
-          onForgotPassword={() => setAuthPage('forgot')}
-        />
-      );
-    }
-    if (authPage === 'register') {
-      return (
-        <RegisterPage
-          onSwitchToLogin={() => setAuthPage('login')}
-        />
-      );
-    }
-    if (authPage === 'forgot') {
-      return (
-        <ForgotPasswordPage
-          onBack={() => setAuthPage('login')}
-        />
-      );
-    }
-  }
-
-  // 加载数据
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  // 加载指定关键词的热点列表
+  const loadKeywordHotspots = useCallback(async (kwId: string, page = 1) => {
+    setIsDataLoading(true);
     try {
-      const filterParams: Record<string, string | number> = {
-        limit: 20,
-        page: currentPage,
-      };
-      // Apply dashboard filters
-      if (dashboardFilters.source) filterParams.source = dashboardFilters.source;
-      if (dashboardFilters.importance) filterParams.importance = dashboardFilters.importance;
-      if (dashboardFilters.keywordId) filterParams.keywordId = dashboardFilters.keywordId;
-      if (dashboardFilters.timeRange) filterParams.timeRange = dashboardFilters.timeRange;
-      if (dashboardFilters.isReal) filterParams.isReal = dashboardFilters.isReal;
-      if (dashboardFilters.sortBy) filterParams.sortBy = dashboardFilters.sortBy;
-      if (dashboardFilters.sortOrder) filterParams.sortOrder = dashboardFilters.sortOrder;
-
-      const [keywordsData, hotspotsData, statsData, notifData] = await Promise.all([
-        keywordsApi.getAll(),
-        hotspotsApi.getAll(filterParams as any),
-        hotspotsApi.getStats(),
-        notificationsApi.getAll({ limit: 20 })
-      ]);
-      setKeywords(keywordsData);
-      setHotspots(hotspotsData.data);
-      setTotalPages(hotspotsData.pagination.totalPages);
-      setStats(statsData);
-      setNotifications(notifData.data);
-      setUnreadCount(notifData.unreadCount);
-
-      // 订阅关键词
-      const activeKeywords = keywordsData.filter(k => k.isActive).map(k => k.text);
-      if (activeKeywords.length > 0) {
-        subscribeToKeywords(activeKeywords);
-      }
+      const data = await hotspotsApi.getAll({ keywordId: kwId, limit: 20, page });
+      setKeywordHotspots(data.data);
+      setKeywordTotalPages(data.pagination.totalPages);
+      setKeywordPage(page);
     } catch (error) {
-      console.error('Failed to load data:', error);
+      console.error('Failed to load keyword hotspots:', error);
     } finally {
-      setIsLoading(false);
+      setIsDataLoading(false);
     }
-  }, [dashboardFilters, currentPage]);
+  }, []);
+
+  // 加载系统词库
+  const loadLibraryKeywords = useCallback(async () => {
+    try {
+      const data = await keywordLibraryApi.getAll();
+      setLibraryKeywords(data);
+    } catch (error) {
+      console.error('Failed to load library keywords:', error);
+    }
+  }, []);
+
+  // 切换到关键词 tab 时自动选中第一个并加载热点
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if (activeTab === 'keywords') {
+      loadLibraryKeywords();
+      if (keywords.length > 0 && !selectedKeywordId) {
+        const firstActive = keywords.find(k => k.isActive) || keywords[0];
+        if (firstActive) {
+          setSelectedKeywordId(firstActive.keywordId);
+          loadKeywordHotspots(firstActive.keywordId, 1);
+        }
+      }
+    }
+  }, [isLoggedIn, activeTab, keywords, selectedKeywordId, loadKeywordHotspots, loadLibraryKeywords]);
 
   // 当筛选条件变化时重置页码
   useEffect(() => {
+    if (!isLoggedIn) return;
     setCurrentPage(1);
-  }, [dashboardFilters]);
+  }, [isLoggedIn, dashboardFilters]);
 
   useEffect(() => {
+    if (!isLoggedIn) return;
     loadData();
-  }, [loadData]);
-
-  // 登出
-  const handleLogout = async () => {
-    await logout();
-  };
+  }, [isLoggedIn, loadData]);
 
   // WebSocket 事件
   useEffect(() => {
+    if (!isLoggedIn) return;
     const unsubHotspot = onNewHotspot((hotspot) => {
       setHotspots(prev => [hotspot as Hotspot, ...prev.slice(0, 19)]);
-      showToast('发现新热点: ' + hotspot.title.slice(0, 30), 'success');
+      setToast({ message: '发现新热点: ' + hotspot.title.slice(0, 30), type: 'success' });
+      setTimeout(() => setToast(null), 3000);
       loadData();
     });
 
@@ -229,37 +209,97 @@ function App() {
       unsubHotspot();
       unsubNotif();
     };
-  }, [loadData]);
+  }, [isLoggedIn, loadData]);
 
-  const showToast = (message: string, type: 'success' | 'error') => {
+  // ✅ 所有useMemo必须无条件调用 - 移到条件返回之前
+  // Client-side filtering/sorting for search results
+  const filteredSearchResults = useMemo(() => {
+    let results = [...searchResults];
+
+    // Apply filters
+    if (searchFilters.source) {
+      results = results.filter(h => h.source === searchFilters.source);
+    }
+    if (searchFilters.importance) {
+      results = results.filter(h => h.importance === searchFilters.importance);
+    }
+    if (searchFilters.isReal === 'true') {
+      results = results.filter(h => h.isReal);
+    } else if (searchFilters.isReal === 'false') {
+      results = results.filter(h => !h.isReal);
+    }
+    if (searchFilters.keywordId) {
+      results = results.filter(h => h.keyword?.id === searchFilters.keywordId);
+    }
+    if (searchFilters.timeRange) {
+      const now = new Date();
+      let dateFrom: Date | null = null;
+      switch (searchFilters.timeRange) {
+        case '1h': dateFrom = new Date(now.getTime() - 60 * 60 * 1000); break;
+        case 'today': dateFrom = new Date(now); dateFrom.setHours(0, 0, 0, 0); break;
+        case '7d': dateFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
+        case '30d': dateFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); break;
+      }
+      if (dateFrom) {
+        results = results.filter(h => new Date(h.createdAt) >= dateFrom!);
+      }
+    }
+
+    // Apply sorting using shared utility
+    results = sortHotspots(results, searchFilters.sortBy || 'createdAt', (searchFilters.sortOrder || 'desc') as 'asc' | 'desc');
+
+    return results;
+  }, [searchResults, searchFilters]);
+
+  // ✅ 所有回调函数必须无条件定义 - 移到条件返回之前
+  const handleLogout = async () => {
+    await logout();
+  };
+
+  const setToastAndClear = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // 添加关键词
-  const handleAddKeyword = async (e: React.FormEvent) => {
+  // 订阅关键词（从词库选择或新增）
+  const handleSubscribeKeyword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newKeyword.trim()) return;
 
     try {
-      const keyword = await keywordsApi.create({ text: newKeyword.trim() });
-      setKeywords(prev => [keyword, ...prev]);
+      const result = await keywordsApi.subscribe({ text: newKeyword.trim() });
+      setKeywords(prev => {
+        // 检查是否已存在
+        const exists = prev.some(k => k.keywordId === result.keywordId);
+        if (exists) {
+          return prev;
+        }
+        return [result, ...prev];
+      });
       setNewKeyword('');
-      showToast('关键词添加成功', 'success');
-      subscribeToKeywords([keyword.text]);
+      subscribeToKeywords([result.text]);
+      
+      // 立即触发后台扫描
+      setToastAndClear('关键词已添加，正在扫描...', 'success');
+      triggerHotspotCheck().catch(console.error);
+      
+      // 如果当前选中该关键词，刷新热点数据
+      if (selectedKeywordId === result.id) {
+        loadKeywordHotspots(result.keywordId, 1);
+      }
     } catch (error: any) {
-      showToast(error.message || '添加失败', 'error');
+      setToastAndClear(error.message || '添加失败', 'error');
     }
   };
 
-  // 删除关键词
-  const handleDeleteKeyword = async (id: string) => {
+  // 取消订阅关键词
+  const handleUnsubscribeKeyword = async (keywordId: string) => {
     try {
-      await keywordsApi.delete(id);
-      setKeywords(prev => prev.filter(k => k.id !== id));
-      showToast('关键词已删除', 'success');
+      await keywordsApi.unsubscribe(keywordId);
+      setKeywords(prev => prev.filter(k => k.keywordId !== keywordId));
+      setToastAndClear('已取消监控', 'success');
     } catch (error) {
-      showToast('删除失败', 'error');
+      setToastAndClear('操作失败', 'error');
     }
   };
 
@@ -267,9 +307,36 @@ function App() {
   const handleToggleKeyword = async (id: string) => {
     try {
       const updated = await keywordsApi.toggle(id);
-      setKeywords(prev => prev.map(k => k.id === id ? updated : k));
+      setKeywords(prev => prev.map(k => k.id === id ? { ...k, isActive: updated.isActive } : k));
     } catch (error) {
-      showToast('操作失败', 'error');
+      setToastAndClear('操作失败', 'error');
+    }
+  };
+
+  // 从系统词库添加关键词
+  const handleAddFromLibrary = async (keywordId: string) => {
+    if (!keywordId) return;
+    try {
+      const result = await keywordsApi.subscribe({ keywordId });
+      const exists = keywords.some(k => k.keywordId === result.keywordId);
+      if (!exists) {
+        setKeywords(prev => [{
+          id: result.id,
+          keywordId: result.keywordId,
+          text: result.text,
+          category: result.category,
+          isActive: result.isActive,
+          addedAt: result.addedAt,
+          hotspotCount: 0
+        }, ...prev]);
+        setToastAndClear(`已添加 "${result.text}" 到监控词`, 'success');
+        subscribeToKeywords([result.text]);
+      } else {
+        setToastAndClear('该关键词已在监控列表中', 'error');
+      }
+      setSelectedLibraryKeyword('');
+    } catch (error: any) {
+      setToastAndClear(error.message || '添加失败', 'error');
     }
   };
 
@@ -278,29 +345,15 @@ function App() {
     e.preventDefault();
     if (!searchQuery.trim()) return;
 
-    setIsLoading(true);
+    setIsDataLoading(true);
     try {
       const result = await hotspotsApi.search(searchQuery);
       setSearchResults(result.results);
-      showToast(`找到 ${result.results.length} 条结果`, 'success');
+      setToastAndClear(`找到 ${result.results.length} 条结果`, 'success');
     } catch (error) {
-      showToast('搜索失败', 'error');
+      setToastAndClear('搜索失败', 'error');
     } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 手动触发检查
-  const handleManualCheck = async () => {
-    setIsChecking(true);
-    try {
-      await triggerHotspotCheck();
-      showToast('热点检查已触发', 'success');
-      setTimeout(loadData, 5000);
-    } catch (error) {
-      showToast('触发失败', 'error');
-    } finally {
-      setIsChecking(false);
+      setIsDataLoading(false);
     }
   };
 
@@ -343,44 +396,60 @@ function App() {
     setAllReasonsExpanded(!allReasonsExpanded);
   };
 
-  // Client-side filtering/sorting for search results
-  const filteredSearchResults = useMemo(() => {
-    let results = [...searchResults];
+  // ✅ 条件返回必须在所有hooks和函数定义之后
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#050510] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
-    // Apply filters
-    if (searchFilters.source) {
-      results = results.filter(h => h.source === searchFilters.source);
+  if (!isLoggedIn) {
+    if (authPage === 'login') {
+      return (
+        <LoginPage
+          onSwitchToRegister={() => setAuthPage('register')}
+          onForgotPassword={() => setAuthPage('forgot')}
+        />
+      );
     }
-    if (searchFilters.importance) {
-      results = results.filter(h => h.importance === searchFilters.importance);
+    if (authPage === 'register') {
+      return (
+        <RegisterPage
+          onSwitchToLogin={() => setAuthPage('login')}
+        />
+      );
     }
-    if (searchFilters.isReal === 'true') {
-      results = results.filter(h => h.isReal);
-    } else if (searchFilters.isReal === 'false') {
-      results = results.filter(h => !h.isReal);
+    if (authPage === 'forgot') {
+      return (
+        <ForgotPasswordPage
+          onBack={() => setAuthPage('login')}
+        />
+      );
     }
-    if (searchFilters.keywordId) {
-      results = results.filter(h => h.keyword?.id === searchFilters.keywordId);
-    }
-    if (searchFilters.timeRange) {
-      const now = new Date();
-      let dateFrom: Date | null = null;
-      switch (searchFilters.timeRange) {
-        case '1h': dateFrom = new Date(now.getTime() - 60 * 60 * 1000); break;
-        case 'today': dateFrom = new Date(now); dateFrom.setHours(0, 0, 0, 0); break;
-        case '7d': dateFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
-        case '30d': dateFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); break;
-      }
-      if (dateFrom) {
-        results = results.filter(h => new Date(h.createdAt) >= dateFrom!);
-      }
-    }
+  }
 
-    // Apply sorting using shared utility
-    results = sortHotspots(results, searchFilters.sortBy || 'createdAt', (searchFilters.sortOrder || 'desc') as 'asc' | 'desc');
+  // 定价页面（无需登录）
+  if (showPricing) {
+    return (
+      <PricingPage onBack={() => setShowPricing(false)} />
+    );
+  }
 
-    return results;
-  }, [searchResults, searchFilters]);
+  // 会员中心
+  if (showSubscription) {
+    return (
+      <SubscriptionPage onBack={() => setShowSubscription(false)} />
+    );
+  }
+
+  // 账单页
+  if (showBilling) {
+    return (
+      <BillingPage onBack={() => setShowBilling(false)} />
+    );
+  }
 
   const getImportanceIcon = (importance: string) => {
     switch (importance) {
@@ -475,21 +544,22 @@ function App() {
                 </motion.button>
               )}
 
-              <motion.button
-                onClick={handleManualCheck}
-                disabled={isChecking}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className={cn(
-                  "px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all",
-                  isChecking 
-                    ? "bg-blue-500/20 text-blue-400 cursor-wait"
-                    : "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
-                )}
+              {/* 定价入口 */}
+              <button
+                onClick={() => setShowPricing(true)}
+                className="px-3 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 hover:opacity-90 text-white text-sm font-medium transition-all"
               >
-                <RefreshCw className={cn("w-4 h-4", isChecking && "animate-spin")} />
-                {isChecking ? '扫描中' : '立即扫描'}
-              </motion.button>
+                升级方案
+              </button>
+
+              {/* 会员中心 */}
+              <button
+                onClick={() => setShowSubscription(true)}
+                className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-slate-400 hover:text-white text-sm transition-all flex items-center gap-2"
+              >
+                <Crown className="w-4 h-4" />
+                会员
+              </button>
 
               {/* Notifications */}
               <div className="relative">
@@ -1008,98 +1078,289 @@ function App() {
 
         {/* Keywords Tab */}
         {activeTab === 'keywords' && (
-          <div className="space-y-6">
-            {/* Add Keyword Card */}
-            <form onSubmit={handleAddKeyword} className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
-              <div className="flex gap-3">
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    value={newKeyword}
-                    onChange={(e) => setNewKeyword(e.target.value)}
-                    placeholder="输入要监控的关键词，如：GPT-5、AI编程、Cursor..."
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                  />
+          <div className="flex gap-6 h-[calc(100vh-220px)]">
+            {/* 左侧：关键词管理 */}
+            <div className="w-80 shrink-0 flex flex-col">
+              {/* 系统词库选择器 */}
+              <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Crown className="w-3.5 h-3.5 text-purple-400" />
+                  <span className="text-xs font-medium text-purple-300">系统推荐词库</span>
                 </div>
-                <motion.button 
-                  type="submit" 
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-medium flex items-center gap-2 shadow-lg shadow-blue-500/25"
-                >
-                  <Plus className="w-4 h-4" />
-                  添加
-                </motion.button>
-              </div>
-            </form>
-
-            {/* Keywords Grid */}
-            <div className="grid gap-3 md:grid-cols-2">
-              <AnimatePresence>
-                {keywords.map((keyword, i) => (
-                  <motion.div
-                    key={keyword.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ delay: i * 0.02 }}
-                    className={cn(
-                      "group p-4 rounded-xl border transition-all",
-                      keyword.isActive 
-                        ? "bg-white/[0.03] border-blue-500/20 hover:border-blue-500/30" 
-                        : "bg-white/[0.01] border-white/5 opacity-60"
-                    )}
+                <div className="flex gap-2">
+                  <select
+                    value={selectedLibraryKeyword}
+                    onChange={(e) => setSelectedLibraryKeyword(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-purple-500/50 transition-all"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {/* Toggle */}
-                        <button
-                          onClick={() => handleToggleKeyword(keyword.id)}
-                          className={cn(
-                            "w-11 h-6 rounded-full transition-all relative",
-                            keyword.isActive ? "bg-blue-500" : "bg-slate-700"
-                          )}
+                    <option value="">选择系统词...</option>
+                    {libraryKeywords
+                      .filter(lk => !keywords.some(k => k.keywordId === lk.id))
+                      .map(lk => (
+                        <option key={lk.id} value={lk.id}>
+                          {lk.text} ({lk.userCount}人使用)
+                        </option>
+                      ))}
+                  </select>
+                  <button
+                    onClick={() => handleAddFromLibrary(selectedLibraryKeyword)}
+                    disabled={!selectedLibraryKeyword}
+                    className="px-3 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-300 text-sm font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* 标题 */}
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-white">我的监控词</h3>
+                <span className="text-[10px] text-slate-600">{keywords.length} 个词</span>
+              </div>
+
+              {/* 已有词列表（直接展示，可点击选择） */}
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                {keywords.length === 0 ? (
+                  <div className="text-center py-8 rounded-xl border border-dashed border-white/10">
+                    <Target className="w-6 h-6 text-slate-600 mx-auto mb-2" />
+                    <p className="text-slate-500 text-xs">暂无监控词</p>
+                    <p className="text-slate-600 text-[10px] mt-1">上方添加系统词或手动创建</p>
+                  </div>
+                ) : (
+                  keywords.map((kw) => (
+                    <div
+                      key={kw.keywordId}
+                      className={cn(
+                        "p-3 rounded-xl border transition-all",
+                        selectedKeywordId === kw.keywordId
+                          ? "bg-blue-500/10 border-blue-500/30"
+                          : "bg-white/[0.02] border-white/5 hover:border-white/10"
+                      )}
+                    >
+                      {/* 第一行：开关 + 关键词名 */}
+                      <div className="flex items-center justify-between gap-3">
+                        <div 
+                          onClick={() => {
+                            setSelectedKeywordId(kw.keywordId);
+                            loadKeywordHotspots(kw.keywordId, 1);
+                          }}
+                          className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
                         >
-                          <span className={cn(
-                            "absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all",
-                            keyword.isActive ? "left-6" : "left-1"
+                          {/* 选中指示 */}
+                          <div className={cn(
+                            "w-2 h-2 rounded-full shrink-0",
+                            selectedKeywordId === kw.keywordId ? "bg-blue-400" : "bg-slate-600"
                           )} />
-                        </button>
-                        
-                        <div>
-                          <span className={cn("font-medium", keyword.isActive ? "text-white" : "text-slate-500")}>
-                            {keyword.text}
+                          <span className={cn(
+                            "text-sm font-medium truncate",
+                            kw.isActive ? "text-white" : "text-slate-500"
+                          )}>
+                            {kw.text}
                           </span>
-                          {keyword._count && keyword._count.hotspots > 0 && (
-                            <span className="ml-2 text-xs text-slate-600">
-                              {keyword._count.hotspots} 条热点
-                            </span>
+                          {/* 数据状态指示 */}
+                          {(kw.hotspotCount ?? 0) > 0 ? (
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" title="有存档数据" />
+                          ) : (
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-700 shrink-0" title="暂无数据" />
                           )}
                         </div>
+                        
+                        {/* 开关控制扫描 */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleToggleKeyword(kw.id); }}
+                          className={cn(
+                            "relative w-10 h-5 rounded-full transition-all shrink-0",
+                            kw.isActive ? "bg-blue-500" : "bg-slate-700"
+                          )}
+                          title={kw.isActive ? '点击暂停扫描' : '点击开始扫描'}
+                        >
+                          <div className={cn(
+                            "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all",
+                            kw.isActive ? "left-[22px]" : "left-0.5"
+                          )} />
+                        </button>
                       </div>
                       
-                      <button
-                        onClick={() => handleDeleteKeyword(keyword.id)}
-                        className="p-2 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {/* 第二行：热点数量 */}
+                      <div className="flex items-center justify-between mt-2 pl-4.5">
+                        <span className="text-[10px] text-slate-600">
+                          {kw.hotspotCount ?? 0} 条热点
+                          {(kw.hotspotCount ?? 0) === 0 && " · 等待扫描"}
+                        </span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleUnsubscribeKeyword(kw.keywordId); }}
+                          className="p-1 rounded text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+                  ))
+                )}
+              </div>
+
+              {/* 添加新词 */}
+              <div className="mt-4 pt-4 border-t border-white/5">
+                <p className="text-[10px] text-slate-600 mb-2 px-1 flex items-center gap-1">
+                  <Plus className="w-3 h-3" /> 添加新的监控词（添加后自动开始扫描）
+                </p>
+                <form onSubmit={handleSubscribeKeyword}>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newKeyword}
+                      onChange={(e) => setNewKeyword(e.target.value)}
+                      placeholder="输入新关键词..."
+                      className="flex-1 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-all"
+                    />
+                    <motion.button
+                      type="submit"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      disabled={!newKeyword.trim()}
+                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-medium flex items-center gap-1.5 shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </motion.button>
+                  </div>
+                </form>
+              </div>
             </div>
 
-            {keywords.length === 0 && (
-              <div className="text-center py-16 rounded-2xl border border-dashed border-white/10">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
-                  <Target className="w-8 h-8 text-slate-600" />
+            {/* 右侧：选中关键词的热点 */}
+            <div className="flex-1 flex flex-col min-w-0">
+              {/* 标题栏 */}
+              <div className="flex items-center justify-between mb-4 shrink-0">
+                <div className="flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-orange-500" />
+                  <h2 className="text-base font-semibold text-white">
+                    {keywords.find(k => k.keywordId === selectedKeywordId)?.text || '热点记录'}
+                  </h2>
+                  <span className="text-xs text-slate-600">后台自动监控</span>
                 </div>
-                <p className="text-slate-500">还没有监控关键词</p>
-                <p className="text-sm text-slate-600 mt-1">添加你想追踪的技术热点词</p>
+                <span className="text-xs text-slate-600">{keywordHotspots.length} 条结果</span>
               </div>
-            )}
+
+              {/* 热点列表 */}
+              <div className="flex-1 overflow-y-auto space-y-3">
+                {isDataLoading ? (
+                  <div className="flex items-center justify-center h-40">
+                    <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                  </div>
+                ) : keywordHotspots.length === 0 ? (
+                  <div className="text-center py-16 rounded-2xl border border-dashed border-white/10">
+                    <Search className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                    <p className="text-slate-500 text-sm">暂无热点记录</p>
+                    <p className="text-slate-600 text-xs mt-1">后台每30分钟自动扫描</p>
+                  </div>
+                ) : (
+                  keywordHotspots.map((hotspot, index) => {
+                    const heatScore = calcHeatScore(hotspot);
+                    const heat = getHeatLevel(heatScore);
+                    return (
+                      <motion.div
+                        key={hotspot.id}
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.03 }}
+                        className="group p-4 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 hover:border-white/10 transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            {/* 标签行 */}
+                            <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                              <span className={cn(
+                                "px-2 py-0.5 rounded text-[10px] font-semibold uppercase flex items-center",
+                                hotspot.importance === 'urgent' && "bg-red-500/15 text-red-400 border border-red-500/20",
+                                hotspot.importance === 'high' && "bg-orange-500/15 text-orange-400 border border-orange-500/20",
+                                hotspot.importance === 'medium' && "bg-amber-500/15 text-amber-400 border border-amber-500/20",
+                                hotspot.importance === 'low' && "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+                              )}>
+                                {getImportanceIcon(hotspot.importance)}
+                                <span className="ml-0.5">{hotspot.importance}</span>
+                              </span>
+                              <span className="flex items-center gap-1 text-[10px] text-slate-600">
+                                {getSourceIcon(hotspot.source)}
+                                {getSourceLabel(hotspot.source)}
+                              </span>
+                              {!hotspot.isReal && (
+                                <span className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">
+                                  <ShieldAlert className="w-3 h-3" />可疑
+                                </span>
+                              )}
+                              {hotspot.isReal && hotspot.relevance >= 80 && (
+                                <span className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                  <Shield className="w-3 h-3" />可信
+                                </span>
+                              )}
+                              <span className={cn("flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 font-medium", heat.color)}>
+                                <ThermometerSun className="w-3 h-3" />{heat.label}
+                              </span>
+                            </div>
+                            {/* 标题 */}
+                            <h3 className="text-sm font-medium text-white line-clamp-2 group-hover:text-blue-400 transition-colors mb-1">
+                              {hotspot.title}
+                            </h3>
+                            {/* AI 摘要 */}
+                            {hotspot.summary && (
+                              <p className="text-xs text-slate-500 line-clamp-2 mb-1">{hotspot.summary}</p>
+                            )}
+                            {/* 元信息 */}
+                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+                              <span className="flex items-center gap-1">
+                                <Target className="w-3 h-3" />相关 {hotspot.relevance}%
+                              </span>
+                              {hotspot.publishedAt && (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />{relativeTime(hotspot.publishedAt)}
+                                </span>
+                              )}
+                              {hotspot.viewCount != null && hotspot.viewCount > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <Eye className="w-3 h-3" />{hotspot.viewCount.toLocaleString()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {/* 链接 */}
+                          <a
+                            href={hotspot.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 p-2 rounded-lg bg-white/5 hover:bg-blue-500/20 text-slate-500 hover:text-blue-400 transition-all"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </div>
+                      </motion.div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* 分页 */}
+              {keywordTotalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-4 pt-4 border-t border-white/5 shrink-0">
+                  <button
+                    onClick={() => selectedKeywordId && loadKeywordHotspots(selectedKeywordId, keywordPage - 1)}
+                    disabled={keywordPage <= 1}
+                    className="p-2 rounded-xl bg-white/5 text-slate-400 hover:text-white disabled:opacity-30 transition-all"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs text-slate-500 px-2">
+                    {keywordPage} / {keywordTotalPages}
+                  </span>
+                  <button
+                    onClick={() => selectedKeywordId && loadKeywordHotspots(selectedKeywordId, keywordPage + 1)}
+                    disabled={keywordPage >= keywordTotalPages}
+                    className="p-2 rounded-xl bg-white/5 text-slate-400 hover:text-white disabled:opacity-30 transition-all"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

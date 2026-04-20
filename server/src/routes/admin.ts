@@ -46,7 +46,7 @@ router.get('/users', async (req: Request, res: Response): Promise<void> => {
           updatedAt: true,
           _count: {
             select: {
-              keywords: true,
+              userKeywords: true,
               notifications: true
             }
           }
@@ -89,7 +89,7 @@ router.get('/users/:id', async (req: Request, res: Response): Promise<void> => {
         settings: true,
         _count: {
           select: {
-            keywords: true,
+            userKeywords: true,
             notifications: true,
             refreshTokens: true
           }
@@ -262,7 +262,7 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
       prisma.user.count({ where: { createdAt: { gte: today } } }),
       prisma.user.count({ where: { createdAt: { gte: thisWeek } } }),
       prisma.user.count({ where: { isBanned: true } }),
-      prisma.keyword.count(),
+      prisma.keywordLibrary.count(),
       prisma.hotspot.count(),
       prisma.hotspot.count({ where: { createdAt: { gte: today } } }),
       prisma.notification.count(),
@@ -301,6 +301,261 @@ router.get('/stats', async (req: Request, res: Response): Promise<void> => {
   } catch (error) {
     console.error('Admin stats error:', error);
     res.status(500).json({ error: '获取统计数据失败' });
+  }
+});
+
+/**
+ * GET /api/admin/subscriptions
+ * 获取订阅列表
+ */
+router.get('/subscriptions', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const page = parseInt((req.query.page as string) || '1');
+    const limit = parseInt((req.query.limit as string) || '20');
+    const search = (req.query.search as string) || undefined;
+    const status = (req.query.status as string) || undefined;
+    const skip = (page - 1) * limit;
+
+    // 构建用户搜索条件
+    const userWhere: any = {};
+    if (search) {
+      userWhere.OR = [
+        { email: { contains: search } },
+        { name: { contains: search } }
+      ];
+    }
+
+    // 获取用户 ID 列表
+    const matchingUsers = await prisma.user.findMany({
+      where: userWhere,
+      select: { id: true }
+    });
+    const userIds = matchingUsers.map(u => u.id);
+
+    // 构建订阅查询条件
+    const where: any = {};
+    if (userIds.length > 0) {
+      where.userId = { in: userIds };
+    }
+    if (status) {
+      where.status = status;
+    }
+
+    const [subscriptions, total] = await Promise.all([
+      prisma.subscription.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          plan: { select: { planId: true, name: true } },
+          user: { select: { email: true, name: true } }
+        }
+      }),
+      prisma.subscription.count({ where })
+    ]);
+
+    const data = subscriptions.map(s => ({
+      id: s.id,
+      userId: s.userId,
+      userEmail: s.user.email,
+      userName: s.user.name,
+      planId: s.plan.planId,
+      planName: s.plan.name,
+      status: s.status,
+      billingCycle: s.billingCycle,
+      currentPeriodEnd: s.currentPeriodEnd.toISOString(),
+      autoRenew: s.autoRenew,
+      createdAt: s.createdAt.toISOString()
+    }));
+
+    res.json({
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Admin get subscriptions error:', error);
+    res.status(500).json({ error: '获取订阅列表失败' });
+  }
+});
+
+/**
+ * GET /api/admin/payments
+ * 获取支付订单流水
+ */
+router.get('/payments', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const page = parseInt((req.query.page as string) || '1');
+    const limit = parseInt((req.query.limit as string) || '20');
+    const search = (req.query.search as string) || undefined;
+    const status = (req.query.status as string) || undefined;
+    const skip = (page - 1) * limit;
+
+    // 构建用户搜索条件
+    const userWhere: any = {};
+    if (search) {
+      userWhere.OR = [
+        { email: { contains: search } },
+        { name: { contains: search } }
+      ];
+    }
+
+    // 获取用户 ID 列表
+    const matchingUsers = await prisma.user.findMany({
+      where: userWhere,
+      select: { id: true }
+    });
+    const userIds = matchingUsers.map(u => u.id);
+
+    // 构建订单查询条件
+    const where: any = {};
+    if (userIds.length > 0) {
+      where.userId = { in: userIds };
+    }
+    if (status) {
+      where.status = status;
+    }
+
+    const [payments, total] = await Promise.all([
+      prisma.payment.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.payment.count({ where })
+    ]);
+
+    // 获取关联的用户和套餐信息
+    const paymentUserIds = [...new Set(payments.map(p => p.userId))];
+    const paymentPlanIds = [...new Set(payments.map(p => p.planId))];
+    const [paymentUsers, paymentPlans] = await Promise.all([
+      prisma.user.findMany({
+        where: { id: { in: paymentUserIds } },
+        select: { id: true, email: true, name: true }
+      }),
+      prisma.plan.findMany({
+        where: { id: { in: paymentPlanIds } },
+        select: { id: true, name: true }
+      })
+    ]);
+
+    const userMap = new Map(paymentUsers.map(u => [u.id, u]));
+    const planMap = new Map(paymentPlans.map(p => [p.id, p]));
+
+    const data = payments.map(p => {
+      const user = userMap.get(p.userId);
+      const plan = planMap.get(p.planId);
+      return {
+        id: p.id,
+        orderNo: p.orderNo,
+        userId: p.userId,
+        userEmail: user?.email || '',
+        userName: user?.name || null,
+        planName: plan?.name || '',
+        billingCycle: p.billingCycle,
+        amount: p.amount,
+        status: p.status,
+        payChannel: p.payChannel,
+        paidAt: p.paidAt?.toISOString() || null,
+        createdAt: p.createdAt.toISOString()
+      };
+    });
+
+    res.json({
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Admin get payments error:', error);
+    res.status(500).json({ error: '获取订单流水失败' });
+  }
+});
+
+/**
+ * POST /api/admin/subscriptions/:id/renew
+ * 手动续费（管理员操作）
+ */
+router.post('/subscriptions/:id/renew', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+
+    const subscription = await prisma.subscription.findUnique({ where: { id } });
+    if (!subscription) {
+      res.status(404).json({ error: '订阅不存在' });
+      return;
+    }
+
+    const plan = await prisma.plan.findUnique({ where: { id: subscription.planId } });
+    if (!plan) {
+      res.status(404).json({ error: '套餐不存在' });
+      return;
+    }
+
+    // 计算新的订阅周期
+    const now = new Date();
+    const periodEnd = new Date(subscription.currentPeriodEnd);
+    let newPeriodStart = periodEnd > now ? periodEnd : now;
+    let newPeriodEnd: Date;
+
+    if (subscription.billingCycle === 'yearly') {
+      newPeriodEnd = new Date(newPeriodStart);
+      newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 1);
+    } else {
+      newPeriodEnd = new Date(newPeriodStart);
+      newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
+    }
+
+    // 更新订阅
+    await prisma.subscription.update({
+      where: { id },
+      data: {
+        status: 'active',
+        currentPeriodStart: newPeriodStart,
+        currentPeriodEnd: newPeriodEnd,
+        autoRenew: true,
+        cancelledAt: null
+      }
+    });
+
+    res.json({ message: '续费成功' });
+  } catch (error) {
+    console.error('Admin renew subscription error:', error);
+    res.status(500).json({ error: '续费失败' });
+  }
+});
+
+/**
+ * POST /api/admin/subscriptions/:id/cancel
+ * 管理员取消订阅
+ */
+router.post('/subscriptions/:id/cancel', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+
+    await prisma.subscription.update({
+      where: { id },
+      data: {
+        status: 'cancelled',
+        autoRenew: false,
+        cancelledAt: new Date()
+      }
+    });
+
+    res.json({ message: '订阅已取消' });
+  } catch (error) {
+    console.error('Admin cancel subscription error:', error);
+    res.status(500).json({ error: '取消订阅失败' });
   }
 });
 

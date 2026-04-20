@@ -13,24 +13,29 @@ datasource db {
 // ============ 用户认证相关 ============
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  password     String   // bcrypt 加密后的密码
-  name         String?  // 用户昵称
-  role         String   @default("user") // user | admin
-  isBanned     Boolean  @default(false)
-  isEmailVerified Boolean @default(false)
-  emailVerifyToken  String?  // 邮箱验证 Token
-  resetToken       String?  // 密码重置 Token
+  id               String    @id @default(uuid())
+  email            String    @unique
+  password         String // bcrypt 加密后的密码
+  name             String? // 用户昵称
+  role             String    @default("user") // user | admin
+  isBanned         Boolean   @default(false)
+  isEmailVerified  Boolean   @default(false)
+  emailVerifyToken String? // 邮箱验证 Token
+  resetToken       String? // 密码重置 Token
   resetTokenExp    DateTime? // 密码重置 Token 过期时间
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   // 关联
-  keywords     Keyword[]
-  notifications Notification[]
-  settings     UserSettings?
-  refreshTokens RefreshToken[]
+  userKeywords     UserKeyword[]
+  notifications    Notification[]
+  settings         UserSettings?
+  refreshTokens    RefreshToken[]
+  subscriptions    Subscription[]
+  payments         Payment[]
+  usages           Usage[]
+  devices          Device[]
+  hotspotViews     UserHotspotView[]
 }
 
 model RefreshToken {
@@ -43,94 +48,124 @@ model RefreshToken {
 }
 
 model UserSettings {
-  id          String  @id @default(uuid())
-  userId      String  @unique
-  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Logo 定制
-  logoUrl     String? // ImgBB 返回的 URL
+  logoUrl String? // ImgBB 返回的 URL
 
   // 主题定制
-  themeMode   String  @default("dark") // dark | light
-  themeColor  String  @default("#3b82f6") // 主题色（HEX）
+  themeMode  String @default("dark") // dark | light
+  themeColor String @default("#3b82f6") // 主题色（HEX）
 
   // 数据源偏好（逗号分隔）
-  sourcePrefs String  @default("twitter,weibo,zhihu,toutiao,bilibili")
+  sourcePrefs String @default("twitter,weibo,zhihu,toutiao,bilibili")
 
   // 过滤/排序偏好
-  defaultImportance String @default("") // 空=全部，否则 low/medium/high/urgent
-  defaultTimeRange  String @default("7d")
-  defaultSortBy     String @default("createdAt")
-  defaultSortOrder  String @default("desc")
-  defaultSource     String @default("")
+  defaultImportance String  @default("") // 空=全部，否则 low/medium/high/urgent
+  defaultTimeRange  String  @default("7d")
+  defaultSortBy     String  @default("createdAt")
+  defaultSortOrder  String  @default("desc")
+  defaultSource     String  @default("")
   showOnlyReal      Boolean @default(false) // 只看真实热点
 
   // 通知偏好
-  notifyEmail  Boolean @default(true)
-  notifyWeb    Boolean @default(true)
+  notifyEmail    Boolean @default(true)
+  notifyWeb      Boolean @default(true)
   notifyHighOnly Boolean @default(true) // 只通知高优先级
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-// ============ 原有数据模型（已关联用户） ============
+// ============ 全局关键词词库 ============
 
-model Keyword {
-  id        String    @id @default(uuid())
-  text      String
-  category  String?
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+// 全局关键词库（所有用户共享）
+model KeywordLibrary {
+  id        String   @id @default(uuid())
+  text      String   @unique // 关键词内容，全局唯一
+  category  String? // 分类（AI/科技/商业等）
+  userCount Int      @default(0) // 被多少用户监控
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  // 用户关联
+  // 关联
+  userKeywords UserKeyword[] // 用户监控关系
+  hotspots     Hotspot[]     // 该关键词扫描到的热点
+}
+
+// 用户监控关系（用户选择监控哪些关键词）
+model UserKeyword {
+  id        String   @id @default(uuid())
   userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  keywordId String
+  keyword   KeywordLibrary @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  isActive  Boolean  @default(true) // 是否启用扫描
+  addedAt   DateTime @default(now())
 
-  hotspots  Hotspot[]
-
-  @@unique([text, userId]) // 同用户在关键词上唯一
+  @@unique([userId, keywordId]) // 同一用户不重复订阅
 }
 
-model Hotspot {
-  id              String    @id @default(uuid())
-  title           String
-  content         String
-  url             String
-  source          String    // twitter, bing, google, weibo, zhihu, toutiao 等
-  sourceId        String?   // 原始内容ID
-  isReal          Boolean   @default(true)
-  relevance       Int       @default(0)
-  relevanceReason String?   // AI 分析相关性的理由
-  keywordMentioned Boolean?  // 内容中是否直接提及了关键词
-  importance      String    @default("low")
-  summary         String?
-  viewCount       Int?
-  likeCount       Int?
-  retweetCount    Int?
-  replyCount      Int?
-  commentCount    Int?
-  quoteCount      Int?
-  danmakuCount    Int?
-  authorName      String?
-  authorUsername  String?
-  authorAvatar    String?
-  authorFollowers Int?
-  authorVerified  Boolean?
-  publishedAt     DateTime?
-  createdAt       DateTime  @default(now())
+// ============ 热点数据 ============
 
-  // 通过 keywordId 关联（keyword 再关联到 user）
-  keywordId       String?
-  keyword         Keyword?  @relation(fields: [keywordId], references: [id], onDelete: SetNull)
+// 全局热点库（所有用户共享）
+model Hotspot {
+  id               String    @id @default(uuid())
+  title            String
+  content          String
+  url              String
+  source           String // twitter, bing, google, weibo, zhihu, toutiao 等
+  sourceId         String? // 原始内容ID
+  isReal           Boolean   @default(true)
+  relevance        Int       @default(0)
+  relevanceReason  String? // AI 分析相关性的理由
+  keywordMentioned Boolean? // 内容中是否直接提及了关键词
+  importance       String    @default("low")
+  summary          String?
+  viewCount        Int?
+  likeCount        Int?
+  retweetCount     Int?
+  replyCount       Int?
+  commentCount     Int?
+  quoteCount       Int?
+  danmakuCount     Int?
+  authorName       String?
+  authorUsername   String?
+  authorAvatar     String?
+  authorFollowers  Int?
+  authorVerified   Boolean?
+  publishedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  scannedAt        DateTime  @default(now())
+
+  // 关联到关键词库
+  keywordId String?
+  keyword   KeywordLibrary? @relation(fields: [keywordId], references: [id], onDelete: SetNull)
+
+  // 用户查看记录
+  userViews UserHotspotView[]
 
   @@unique([url, source])
 }
 
+// 用户热点查看记录（记录用户是否已读）
+model UserHotspotView {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hotspotId String
+  hotspot   Hotspot  @relation(fields: [hotspotId], references: [id], onDelete: Cascade)
+  isRead    Boolean  @default(false)
+  viewedAt  DateTime @default(now())
+
+  @@unique([userId, hotspotId])
+}
+
 model Notification {
   id        String   @id @default(uuid())
-  type      String   // hotspot, alert
+  type      String // hotspot, alert
   title     String
   content   String
   isRead    Boolean  @default(false)
@@ -138,12 +173,99 @@ model Notification {
   createdAt DateTime @default(now())
 
   // 用户关联
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Setting {
   id    String @id @default(uuid())
   key   String @unique
   value String
+}
+
+// ============ 会员订阅系统 ============
+
+// 套餐定义表（系统配置）
+model Plan {
+  id           String   @id @default(uuid())
+  planId       String   @unique // "free" | "pro" | "enterprise"
+  name         String // "免费版" | "专业版" | "企业版"
+  description  String? // 套餐描述
+  priceMonthly Int // 月付价格（分），0表示免费
+  priceYearly  Int // 年付价格（分）
+  // 配额限制（JSON字符串）
+  limits       String // {"keywordLimit": 3, "aiAnalysisLimit": 50, "hotspotDays": 7, "devices": 0, "sources": 3, "emailNotify": false}
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0) // 排序顺序
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  subscriptions Subscription[]
+}
+
+// 用户订阅表
+model Subscription {
+  id                 String    @id @default(uuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId             String
+  plan               Plan      @relation(fields: [planId], references: [id])
+  status             String // "trialing" | "active" | "past_due" | "cancelled" | "expired"
+  billingCycle       String // "monthly" | "yearly"
+  startsAt           DateTime
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime // 当前周期结束 = 配额重置时间节点
+  autoRenew          Boolean   @default(true)
+  cancelledAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([userId]) // 每个用户只能有一个有效订阅
+}
+
+// 支付订单表
+model Payment {
+  id            String    @id @default(uuid())
+  orderNo       String    @unique // 商户订单号（唯一）
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId        String
+  billingCycle  String // "monthly" | "yearly"
+  amount        Int // 金额（分）
+  currency      String    @default("CNY")
+  status        String // "pending" | "paid" | "failed" | "expired" | "refunded"
+  payChannel    String? // "wechat" | "alipay"
+  transactionId String? // 第三方交易号（防重复）
+  paidAt        DateTime?
+  callbackRaw   String? // 回调原始报文（JSON）
+  expiresAt     DateTime // 订单过期时间（创建后30分钟）
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// 配额使用记录表
+model Usage {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String // "ai_analysis" | "hotspot_view"
+  count       Int      @default(0) // 当前使用量
+  periodStart DateTime
+  periodEnd   DateTime // 配额重置时间（次月）
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, type]) // 每个用户每种类型只有一条记录
+}
+
+// 多设备管理表
+model Device {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceName   String?
+  deviceType   String // "web" | "ios" | "android" | "other"
+  deviceToken  String? // 设备Token（用于推送等）
+  lastActiveAt DateTime @default(now())
+  createdAt    DateTime @default(now())
 }

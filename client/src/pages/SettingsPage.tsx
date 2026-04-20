@@ -5,7 +5,7 @@ import {
   CheckCircle, AlertCircle, ChevronRight, X, Sun, Moon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
-import { authApi, UserSettings } from '../services/auth.js';
+import { authApi, type UserSettings } from '../services/auth.js';
 
 const SOURCES = [
   { key: 'twitter', label: 'Twitter/X' },

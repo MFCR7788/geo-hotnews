@@ -285,7 +285,60 @@ export const adminApi = {
       users: { total: number; newToday: number; newThisWeek: number; banned: number; activeOnline: number };
       content: { keywords: number; hotspots: number; hotspotToday: number; notifications: number };
       trends: { registrations: Array<{ date: string; count: number }> };
-    }>('/admin/stats')
+    }>('/admin/stats'),
+
+  // 订阅管理
+  getSubscriptions: (params?: { page?: number; limit?: number; search?: string; status?: string }) => {
+    const sp = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== '') sp.append(k, String(v));
+      });
+    }
+    return requestWithAuth<{
+      data: Array<{
+        id: string;
+        userId: string;
+        userEmail: string;
+        userName: string | null;
+        planId: string;
+        planName: string;
+        status: string;
+        billingCycle: string;
+        currentPeriodEnd: string;
+        autoRenew: boolean;
+        createdAt: string;
+      }>;
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+    }>(`/admin/subscriptions?${sp}`);
+  },
+
+  // 订单流水
+  getPayments: (params?: { page?: number; limit?: number; search?: string; status?: string }) => {
+    const sp = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== '') sp.append(k, String(v));
+      });
+    }
+    return requestWithAuth<{
+      data: Array<{
+        id: string;
+        orderNo: string;
+        userId: string;
+        userEmail: string;
+        userName: string | null;
+        planName: string;
+        billingCycle: string;
+        amount: number;
+        status: string;
+        payChannel: string | null;
+        paidAt: string | null;
+        createdAt: string;
+      }>;
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+    }>(`/admin/payments?${sp}`);
+  }
 };
 
 export { requestWithAuth as authRequest };
