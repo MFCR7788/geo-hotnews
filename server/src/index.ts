@@ -12,8 +12,13 @@ import settingsRouter from './routes/settings.js';
 import notificationsRouter from './routes/notifications.js';
 import authRouter from './routes/auth.js';
 import adminRouter from './routes/admin.js';
+import subscriptionRouter from './routes/subscription.js';
+import paymentsRouter from './routes/payments.js';
+import uploadRouter from './routes/upload.js';
 import { apiLimiter, loginLimiter, registerLimiter } from './middleware/rateLimit.js';
 import { runHotspotCheck } from './jobs/hotspotChecker.js';
+import { resetUsageQuotas, checkExpiredSubscriptions, cleanupExpiredOrders } from './jobs/subscriptionJobs.js';
+import { setKeywordIo } from './routes/keywords.js';
 
 dotenv.config();
 
@@ -45,6 +50,7 @@ app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', authRouter);
 
 // 业务路由
+setKeywordIo(io); // 注入 io，让 keywords 路由可触发热点扫描
 app.use('/api/keywords', keywordsRouter);
 app.use('/api/hotspots', hotspotsRouter);
 app.use('/api/settings', settingsRouter);
@@ -52,6 +58,13 @@ app.use('/api/notifications', notificationsRouter);
 
 // 管理员路由
 app.use('/api/admin', adminRouter);
+
+// 订阅和支付路由
+app.use('/api/subscription', subscriptionRouter);
+app.use('/api/payments', paymentsRouter);
+
+// 图片上传路由
+app.use('/api/upload', uploadRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -100,6 +113,36 @@ cron.schedule('*/30 * * * *', async () => {
     console.log('✅ Scheduled hotspot check completed');
   } catch (error) {
     console.error('❌ Scheduled hotspot check failed:', error);
+  }
+});
+
+// 每月1日 00:00 重置配额
+cron.schedule('0 0 1 * *', async () => {
+  console.log('🔄 Resetting usage quotas...');
+  try {
+    await resetUsageQuotas();
+    console.log('✅ Usage quotas reset completed');
+  } catch (error) {
+    console.error('❌ Reset quotas failed:', error);
+  }
+});
+
+// 每小时检查订阅过期
+cron.schedule('0 * * * *', async () => {
+  try {
+    await checkExpiredSubscriptions();
+  } catch (error) {
+    console.error('❌ Check expired subscriptions failed:', error);
+  }
+});
+
+// 每日 03:00 清理过期订单
+cron.schedule('0 3 * * *', async () => {
+  try {
+    await cleanupExpiredOrders();
+    console.log('✅ Cleaned up expired orders');
+  } catch (error) {
+    console.error('❌ Cleanup expired orders failed:', error);
   }
 });
 

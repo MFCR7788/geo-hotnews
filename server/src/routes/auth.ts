@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { prisma } from '../db.js';
 import { createAuthTokens, refreshAccessToken, revokeAllUserTokens, revokeToken } from '../utils/jwt.js';
 import { requireAuth } from '../middleware/auth.js';
+import upload from '../middleware/upload.js';
 
 const router = Router();
 
@@ -451,6 +452,29 @@ router.put('/settings', requireAuth, async (req: Request, res: Response): Promis
   } catch (error) {
     console.error('Update settings error:', error);
     res.status(500).json({ error: '更新设置失败' });
+  }
+});
+
+/**
+ * POST /api/auth/upload-logo
+ * 上传 Logo 图片（到 ImgBB）
+ */
+router.post('/upload-logo', requireAuth, upload.single('image'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: '请上传图片文件' });
+      return;
+    }
+
+    const { uploadToImgBB } = await import('../services/imgUpload.js');
+    // 将 Buffer 转换为 Base64
+    const base64Data = req.file.buffer.toString('base64');
+    const result = await uploadToImgBB(base64Data, req.file.originalname);
+
+    res.json({ url: result.url });
+  } catch (error: any) {
+    console.error('Upload logo error:', error);
+    res.status(500).json({ error: error.message || '上传失败' });
   }
 });
 

@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { authApi, User, UserSettings, tokenStore } from '../services/auth.js';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { authApi, type User, type UserSettings, tokenStore } from '../services/auth.js';
 
 interface AuthContextType {
   user: User | null;
@@ -21,18 +21,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
+    console.log('[Auth] refreshUser called');
     if (!tokenStore.getAccessToken()) {
+      console.log('[Auth] No access token, setting isLoading=false');
       setIsLoading(false);
       return;
     }
     try {
+      console.log('[Auth] Fetching user info...');
       const me = await authApi.getMe();
+      console.log('[Auth] Got user:', me);
       setUser(me);
       tokenStore.saveUser(me);
       if (me.settings) setSettings(me.settings as UserSettings);
-    } catch {
-      // Token 无效，已在 auth.ts 里处理跳转
+    } catch (err) {
+      console.error('[Auth] Failed to fetch user:', err);
     } finally {
+      console.log('[Auth] Setting isLoading=false');
       setIsLoading(false);
     }
   }, []);

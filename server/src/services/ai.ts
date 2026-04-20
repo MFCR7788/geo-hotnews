@@ -210,12 +210,14 @@ export async function analyzeContent(content: string, keyword: string, preMatchR
 
   if (!process.env.OPENROUTER_API_KEY) {
     console.warn('OpenRouter API key not configured, using fallback analysis');
+    // 【修复】放宽无 API Key 时的阈值：matched=75, unmatched=55
+    // unmatched=55 > 50阈值，让未直接提及的内容也能通过（供用户手动筛选）
     return {
       isReal: true,
-      relevance: matchResult.matched ? 50 : 20,
-      relevanceReason: '未配置 AI 服务，使用默认分数',
+      relevance: matchResult.matched ? 75 : 55,
+      relevanceReason: '未配置 AI 服务，使用默认分数（预匹配=' + (matchResult.matched ? '是' : '否') + '）',
       keywordMentioned: matchResult.matched,
-      importance: 'low',
+      importance: matchResult.matched ? 'medium' : 'low',
       summary: content.slice(0, 50) + '...'
     };
   }
@@ -256,13 +258,14 @@ export async function analyzeContent(content: string, keyword: string, preMatchR
     throw new Error('Failed to parse AI response');
   } catch (error) {
     console.error('AI analysis failed:', error instanceof Error ? error.message : error);
-    // Fallback
+    // 【修复】AI 调用失败时的 Fallback：matched=75, unmatched=55
+    // 与无 API Key 的 fallback 保持一致，让内容能通过过滤
     return {
       isReal: true,
-      relevance: matchResult.matched ? 30 : 10,
-      relevanceReason: 'AI 分析失败，使用默认分数',
+      relevance: matchResult.matched ? 75 : 55,
+      relevanceReason: 'AI 分析失败，使用默认分数（预匹配=' + (matchResult.matched ? '是' : '否') + '）',
       keywordMentioned: matchResult.matched,
-      importance: 'low',
+      importance: matchResult.matched ? 'medium' : 'low',
       summary: content.slice(0, 50) + '...'
     };
   }

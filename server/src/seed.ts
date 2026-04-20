@@ -11,7 +11,7 @@ const prisma = new PrismaClient();
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 async function main() {
-  console.log('🌱 Starting database seed...');
+  console.log('Starting database seed...');
 
   // 1. Create system user
   const systemUser = await prisma.user.upsert({
@@ -27,29 +27,55 @@ async function main() {
       isEmailVerified: true,
     },
   });
-  console.log('✅ System user created:', systemUser.email);
+  console.log('System user created:', systemUser.email);
 
   // 2. Load keywords from backup
   const keywordsBackup = JSON.parse(
     readFileSync(join(__dirname, '../prisma/keywords_backup.json'), 'utf-8')
   );
 
-  // Create a map from old keyword ID to new keyword
-  const keywordIdMap = new Map();
+  // Create a map from old keyword text to new KeywordLibrary ID
+  const keywordLibraryIdMap = new Map<string, string>();
 
   for (const kw of keywordsBackup) {
-    const keyword = await prisma.keyword.create({
-      data: {
+    // 首先添加到全局词库
+    const keywordInLib = await prisma.keywordLibrary.upsert({
+      where: { text: kw.text },
+      update: {},
+      create: {
         text: kw.text,
         category: kw.category,
-        isActive: kw.isActive === 1,
-        userId: SYSTEM_USER_ID,
       },
     });
-    keywordIdMap.set(kw.id, keyword.id);
-    console.log('  📌 Keyword:', keyword.text);
+    keywordLibraryIdMap.set(kw.text, keywordInLib.id);
+    
+    // 创建用户订阅关系
+    await prisma.userKeyword.upsert({
+      where: {
+        userId_keywordId: {
+          userId: SYSTEM_USER_ID,
+          keywordId: keywordInLib.id,
+        }
+      },
+      update: {
+        isActive: kw.isActive === 1,
+      },
+      create: {
+        userId: SYSTEM_USER_ID,
+        keywordId: keywordInLib.id,
+        isActive: kw.isActive === 1,
+      },
+    });
+    
+    // 更新词库用户计数
+    await prisma.keywordLibrary.update({
+      where: { id: keywordInLib.id },
+      data: { userCount: { increment: 1 } },
+    });
+    
+    console.log('  Keyword:', kw.text);
   }
-  console.log(`✅ ${keywordsBackup.length} keywords restored`);
+  console.log(`${keywordsBackup.length} keywords restored to library`);
 
   // 3. Load hotspots from backup
   const hotspotsBackup = JSON.parse(
@@ -61,8 +87,11 @@ async function main() {
 
   for (const hs of hotspotsBackup) {
     try {
-      // Map old keywordId to new keywordId
-      const newKeywordId = hs.keywordId ? keywordIdMap.get(hs.keywordId) : null;
+      // Map old keyword text to new KeywordLibrary ID
+      let newKeywordId: string | null = null;
+      if (hs.keywordText) {
+        newKeywordId = keywordLibraryIdMap.get(hs.keywordText) || null;
+      }
 
       await prisma.hotspot.create({
         data: {
@@ -104,7 +133,7 @@ async function main() {
       }
     }
   }
-  console.log(`✅ ${imported} hotspots imported, ${skipped} skipped (duplicates)`);
+  console.log(`${imported} hotspots imported, ${skipped} skipped (duplicates)`);
 
   // 4. Create some test notifications
   const hotspots = await prisma.hotspot.findMany({ take: 3 });
@@ -119,11 +148,11 @@ async function main() {
       },
     });
   }
-  console.log('✅ Sample notifications created');
+  console.log('Sample notifications created');
 
-  console.log('\n🎉 Database seed completed!');
+  console.log('\nDatabase seed completed!');
   console.log(`   - 1 system user`);
-  console.log(`   - ${keywordsBackup.length} keywords`);
+  console.log(`   - ${keywordsBackup.length} keywords in library`);
   console.log(`   - ${imported} hotspots`);
 }
 

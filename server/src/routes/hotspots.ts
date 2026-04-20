@@ -1,11 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../db.js';
 import { sortHotspots } from '../utils/sortHotspots.js';
-import { requireAuth, optionalAuth } from '../middleware/auth.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
-// 热点列表：需要登录（只看自己关键词匹配的热点）
+// 热点列表：需要登录（只看自己订阅关键词的热点）
 router.get('/', requireAuth, async (req: Request, res: Response) => {
   try {
     const { 
@@ -33,26 +33,30 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
       where.isReal = isReal === 'true';
     }
 
-    // 用户隔离：通过 keyword.userId 过滤
-    // 如果指定了 keywordId，先验证该关键词是否属于当前用户
+    // 用户隔离：通过 UserKeyword 关联过滤
+    // 如果指定了 keywordId，先验证该关键词是否被当前用户订阅
     if (keywordId) {
-      const kw = await prisma.keyword.findFirst({
-        where: { id: keywordId as string, userId: req.user!.userId }
+      const userKeyword = await prisma.userKeyword.findUnique({
+        where: { 
+          userId_keywordId: {
+            userId: req.user!.userId,
+            keywordId: keywordId as string
+          }
+        }
       });
-      if (!kw) {
+      if (!userKeyword) {
         return res.status(403).json({ error: '无权访问该关键词的热点' });
       }
       where.keywordId = keywordId;
     } else {
-      // 不指定 keywordId 时，只看当前用户所有关键词的热点
-      const userKeywords = await prisma.keyword.findMany({
+      // 不指定 keywordId 时，只看当前用户订阅的所有关键词的热点
+      const userKeywords = await prisma.userKeyword.findMany({
         where: { userId: req.user!.userId },
-        select: { id: true }
+        select: { keywordId: true }
       });
-      const keywordIds = userKeywords.map(k => k.id);
+      const keywordIds = userKeywords.map(k => k.keywordId);
 
       if (keywordIds.length === 0) {
-        // 用户没有关键词，返回空
         return res.json({
           data: [],
           pagination: { page: pageNum, limit: limitNum, total: 0, totalPages: 0 }
@@ -155,12 +159,12 @@ router.get('/stats', requireAuth, async (req: Request, res: Response) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 当前用户的关键词
-    const userKeywords = await prisma.keyword.findMany({
+    // 当前用户订阅的关键词
+    const userKeywords = await prisma.userKeyword.findMany({
       where: { userId: req.user!.userId },
-      select: { id: true }
+      select: { keywordId: true }
     });
-    const keywordIds = userKeywords.map(k => k.id);
+    const keywordIds = userKeywords.map(k => k.keywordId);
 
     if (keywordIds.length === 0) {
       return res.json({ total: 0, today: 0, urgent: 0, bySource: {} });
@@ -204,19 +208,28 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
     const hotspot = await prisma.hotspot.findUnique({
       where: { id: req.params.id as string },
-      include: { keyword: true }
+      include: { 
+        keyword: {
+          select: { id: true, text: true, category: true }
+        }
+      }
     });
 
     if (!hotspot) {
       return res.status(404).json({ error: 'Hotspot not found' });
     }
 
-    // 验证是否属于当前用户的关键词
+    // 验证是否属于当前用户订阅的关键词
     if (hotspot.keywordId) {
-      const kw = await prisma.keyword.findFirst({
-        where: { id: hotspot.keywordId, userId: req.user!.userId }
+      const userKeyword = await prisma.userKeyword.findUnique({
+        where: { 
+          userId_keywordId: {
+            userId: req.user!.userId,
+            keywordId: hotspot.keywordId
+          }
+        }
       });
-      if (!kw) {
+      if (!userKeyword) {
         return res.status(403).json({ error: '无权访问该热点' });
       }
     }
@@ -269,7 +282,7 @@ router.post('/search', requireAuth, async (req: Request, res: Response) => {
   }
 });
 
-// 删除热点（只能删自己关键词的热点）
+// 删除热点（只能删自己订阅关键词的热点）
 router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
     const hotspot = await prisma.hotspot.findUnique({
@@ -281,10 +294,15 @@ router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
     }
 
     if (hotspot.keywordId) {
-      const kw = await prisma.keyword.findFirst({
-        where: { id: hotspot.keywordId, userId: req.user!.userId }
+      const userKeyword = await prisma.userKeyword.findUnique({
+        where: { 
+          userId_keywordId: {
+            userId: req.user!.userId,
+            keywordId: hotspot.keywordId
+          }
+        }
       });
-      if (!kw) {
+      if (!userKeyword) {
         return res.status(403).json({ error: '无权删除该热点' });
       }
     }

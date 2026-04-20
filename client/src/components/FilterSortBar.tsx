@@ -5,7 +5,7 @@ import {
   ChevronDown, Check, RotateCcw
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import type { Keyword } from '../services/api';
+import type { UserKeyword } from '../services/api';
 
 export interface FilterState {
   source: string;
@@ -30,7 +30,7 @@ export const defaultFilterState: FilterState = {
 interface FilterSortBarProps {
   filters: FilterState;
   onChange: (filters: FilterState) => void;
-  keywords: Keyword[];
+  keywords: UserKeyword[];
 }
 
 const SORT_OPTIONS = [
@@ -163,7 +163,7 @@ export default function FilterSortBar({ filters, onChange, keywords }: FilterSor
 
   const keywordOptions = [
     { value: '', label: '全部关键词' },
-    ...keywords.filter(k => k.isActive).map(k => ({ value: k.id, label: k.text })),
+    ...keywords.filter(k => k.isActive).map(k => ({ value: k.keywordId, label: k.text })),
   ];
 
   return (
@@ -240,7 +240,7 @@ export default function FilterSortBar({ filters, onChange, keywords }: FilterSor
             )}
             {filters.keywordId && (
               <FilterTag
-                label={keywords.find(k => k.id === filters.keywordId)?.text || '关键词'}
+                label={keywords.find(k => k.keywordId === filters.keywordId)?.text || '关键词'}
                 onRemove={() => update('keywordId', '')}
               />
             )}

@@ -8,8 +8,30 @@ export interface Keyword {
   category: string | null;
   isActive: boolean;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
   _count?: { hotspots: number };
+}
+
+// 新的用户订阅格式
+export interface UserKeyword {
+  id: string;
+  keywordId: string;
+  text: string;
+  category: string | null;
+  isActive: boolean;
+  addedAt: string;
+  hotspotCount?: number;
+  userCount?: number;
+}
+
+// 全局词库关键词
+export interface LibraryKeyword {
+  id: string;
+  text: string;
+  category: string | null;
+  userCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Hotspot {
@@ -39,7 +61,7 @@ export interface Hotspot {
   authorVerified: boolean | null;
   publishedAt: string | null;
   createdAt: string;
-  keyword: { id: string; text: string; category: string | null } | null;
+  keyword?: { id: string; text: string; category: string | null } | null;
 }
 
 export interface Notification {
@@ -82,32 +104,49 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   return response.json();
 }
 
-// Keywords API
+// ============ 全局词库 API ============
+
+export const keywordLibraryApi = {
+  // 获取全局词库
+  getAll: (params?: { search?: string; category?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.append('search', params.search);
+    if (params?.category) searchParams.append('category', params.category);
+    return request<LibraryKeyword[]>(`/keywords/library?${searchParams}`);
+  },
+  
+  // 添加新词到词库
+  create: (data: { text: string; category?: string }) =>
+    request<LibraryKeyword>('/keywords/library', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+};
+
+// ============ 用户关键词订阅 API ============
+
 export const keywordsApi = {
-  getAll: () => request<Keyword[]>('/keywords'),
+  // 获取用户已订阅的关键词
+  getSubscribed: () => request<UserKeyword[]>('/keywords'),
   
-  getById: (id: string) => request<Keyword>(`/keywords/${id}`),
-  
-  create: (data: { text: string; category?: string }) => 
-    request<Keyword>('/keywords', {
+  // 订阅关键词（从词库选择或新增）
+  subscribe: (data: { keywordId?: string; text?: string; category?: string }) =>
+    request<UserKeyword>('/keywords/subscribe', {
       method: 'POST',
       body: JSON.stringify(data)
     }),
   
-  update: (id: string, data: Partial<Keyword>) => 
-    request<Keyword>(`/keywords/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    }),
+  // 取消订阅
+  unsubscribe: (keywordId: string) =>
+    request<void>(`/keywords/unsubscribe/${keywordId}`, { method: 'DELETE' }),
   
-  delete: (id: string) => 
-    request<void>(`/keywords/${id}`, { method: 'DELETE' }),
-  
-  toggle: (id: string) => 
-    request<Keyword>(`/keywords/${id}/toggle`, { method: 'PATCH' })
+  // 切换开关状态
+  toggle: (id: string) =>
+    request<{ id: string; keywordId: string; text: string; isActive: boolean }>(`/keywords/toggle/${id}`, { method: 'PATCH' })
 };
 
-// Hotspots API
+// ============ Hotspots API ============
+
 export const hotspotsApi = {
   getAll: (params?: { 
     page?: number; 
@@ -147,7 +186,8 @@ export const hotspotsApi = {
     request<void>(`/hotspots/${id}`, { method: 'DELETE' })
 };
 
-// Notifications API
+// ============ Notifications API ============
+
 export const notificationsApi = {
   getAll: (params?: { page?: number; limit?: number; unreadOnly?: boolean }) => {
     const searchParams = new URLSearchParams();
@@ -174,7 +214,8 @@ export const notificationsApi = {
     request<void>('/notifications', { method: 'DELETE' })
 };
 
-// Settings API
+// ============ Settings API ============
+
 export const settingsApi = {
   getAll: () => request<Record<string, string>>('/settings'),
   
@@ -185,6 +226,7 @@ export const settingsApi = {
     })
 };
 
-// Manual trigger
+// ============ Manual trigger ============
+
 export const triggerHotspotCheck = () => 
   request<{ message: string }>('/check-hotspots', { method: 'POST' });

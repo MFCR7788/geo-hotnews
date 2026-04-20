@@ -9,19 +9,17 @@ import { sendHotspotEmail } from '../services/email.js';
 import type { SearchResult } from '../types.js';
 
 // 新鲜度过滤：丢弃超过指定小时数的内容
-// Twitter 层面已通过 since: 限制了时间范围，这里只做兜底
 const MAX_AGE_HOURS = 7 * 24; // 7天
 
 function filterByFreshness(results: SearchResult[]): SearchResult[] {
   const cutoff = new Date(Date.now() - MAX_AGE_HOURS * 3600 * 1000);
   return results.filter(item => {
-    // 没有发布时间的，暂时保留（搜索引擎结果通常没有时间）
     if (!item.publishedAt) return true;
     return item.publishedAt >= cutoff;
   });
 }
 
-// 按来源优先级排序：Twitter > 微博/知乎 > 头条 > RSS > B站/账号内容 > 搜索引擎
+// 按来源优先级排序
 function prioritizeResults(results: SearchResult[]): SearchResult[] {
   const priorityMap: Record<string, number> = {
     twitter: 1,
@@ -51,42 +49,56 @@ function prioritizeResults(results: SearchResult[]): SearchResult[] {
 }
 
 export async function runHotspotCheck(io: Server): Promise<void> {
-  console.log('🔍 Starting hotspot check...');
+  console.log('Starting hotspot check...');
 
-  // 获取所有激活的关键词
-  const keywords = await prisma.keyword.findMany({
-    where: { isActive: true }
+  // 获取所有激活的用户订阅
+  const userKeywords = await prisma.userKeyword.findMany({
+    where: { isActive: true },
+    include: {
+      keyword: true,
+      user: true
+    }
   });
 
-  if (keywords.length === 0) {
-    console.log('No active keywords to monitor');
+  if (userKeywords.length === 0) {
+    console.log('No active keyword subscriptions to monitor');
     return;
   }
 
-  console.log(`Checking ${keywords.length} keywords...`);
+  // 按关键词库分组去重（避免同一个关键词被多人订阅时重复扫描）
+  const keywordGroups = new Map<string, typeof userKeywords>();
+  for (const uk of userKeywords) {
+    const existing = keywordGroups.get(uk.keywordId);
+    if (existing) {
+      existing.push(uk);
+    } else {
+      keywordGroups.set(uk.keywordId, [uk]);
+    }
+  }
+
+  console.log(`Checking ${keywordGroups.size} unique keywords (${userKeywords.length} user subscriptions)...`);
 
   let newHotspotsCount = 0;
 
-  for (const keyword of keywords) {
-    console.log(`\n📎 Checking keyword: "${keyword.text}"`);
+  for (const [keywordId, subscribers] of keywordGroups) {
+    const keyword = subscribers[0].keyword; // 关键词库中的关键词
+    console.log(`\nChecking keyword: "${keyword.text}" (${subscribers.length} users subscribed)`);
 
     try {
-      // 第一步：检测关键词是否为某个平台账号
-      console.log(`  🎯 Detecting account for "${keyword.text}"...`);
+      // 检测账号
       const accountResult = await detectAndFetchAccount(keyword.text);
       
       if (accountResult.accounts.length > 0) {
         for (const acc of accountResult.accounts) {
-          console.log(`  ✅ Found ${acc.platform} account: ${acc.name} (${acc.followers} followers)`);
+          console.log(`  Found ${acc.platform} account: ${acc.name} (${acc.followers} followers)`);
         }
       }
 
-      // 第 1.5 步：Query Expansion（查询扩展）
-      console.log(`  🔍 Expanding keyword "${keyword.text}"...`);
+      // 查询扩展
       const expandedKeywords = await expandKeyword(keyword.text);
-      console.log(`  📋 Expanded to ${expandedKeywords.length} variants: ${expandedKeywords.slice(0, 5).join(', ')}${expandedKeywords.length > 5 ? '...' : ''}`);
+      console.log(`  Expanded to ${expandedKeywords.length} variants: ${expandedKeywords.slice(0, 5).join(', ')}${expandedKeywords.length > 5 ? '...' : ''}`);
 
-      // 第二步：从多个来源获取数据（国际 + 国内并行请求）
+      // 多来源并行搜索
       const [
         twitterResults,
         bingResults,
@@ -113,7 +125,6 @@ export async function runHotspotCheck(io: Server): Promise<void> {
 
       const allResults: SearchResult[] = [];
       
-      // 优先添加账号检测到的最新内容
       if (accountResult.results.length > 0) {
         allResults.push(...accountResult.results);
         console.log(`  AccountFetch: ${accountResult.results.length} results`);
@@ -141,24 +152,23 @@ export async function runHotspotCheck(io: Server): Promise<void> {
         }
       }
 
-      // 去重 → 新鲜度过滤 → 按来源优先级排序
+      // 去重、新鲜度过滤、优先级排序
       const uniqueResults = deduplicateResults(allResults);
       const freshResults = filterByFreshness(uniqueResults);
       const sortedResults = prioritizeResults(freshResults);
-      console.log(`  Total: ${allResults.length} raw → ${uniqueResults.length} unique → ${freshResults.length} fresh (within ${MAX_AGE_HOURS}h)`);
+      console.log(`  Total: ${allResults.length} raw → ${uniqueResults.length} unique → ${freshResults.length} fresh`);
 
-      // 处理结果：Twitter 优先多给配额
-      // Twitter 最多处理 15 条，其他来源共享 20 条配额（增加了新数据源）
+      // 处理配额
       let twitterProcessed = 0;
       let otherProcessed = 0;
       const TWITTER_QUOTA = 15;
       const OTHER_QUOTA = 20;
 
       for (const item of sortedResults) {
-        // 检查配额
         if (item.source === 'twitter' && twitterProcessed >= TWITTER_QUOTA) continue;
         if (item.source !== 'twitter' && otherProcessed >= OTHER_QUOTA) continue;
         if (twitterProcessed + otherProcessed >= TWITTER_QUOTA + OTHER_QUOTA) break;
+
         try {
           // 检查是否已存在
           const existing = await prisma.hotspot.findFirst({
@@ -172,30 +182,29 @@ export async function runHotspotCheck(io: Server): Promise<void> {
             continue;
           }
 
-          // AI 分析（传入关键词和预匹配结果）
+          // AI 分析
           const fullText = item.title + '\n' + item.content;
           const preMatch = preMatchKeyword(fullText, expandedKeywords);
           const analysis = await analyzeContent(fullText, keyword.text, preMatch);
 
-          // 只保存真实且相关的热点
+          // 过滤假内容
           if (!analysis.isReal) {
-            console.log(`  ❌ Filtered fake/spam: ${item.title.slice(0, 30)}...`);
+            console.log(`  Filtered fake/spam: ${item.title.slice(0, 30)}...`);
             continue;
           }
 
-          // 相关性阈值：50 分以下过滤
+          // 相关性阈值
           if (analysis.relevance < 50) {
-            console.log(`  ⏭ Low relevance (${analysis.relevance}): ${item.title.slice(0, 30)}...`);
+            console.log(`  Low relevance (${analysis.relevance}): ${item.title.slice(0, 30)}...`);
             continue;
           }
 
-          // 额外规则：关键词未被提及且相关性不足 65 → 过滤
           if (!analysis.keywordMentioned && analysis.relevance < 65) {
-            console.log(`  ⏭ Keyword not mentioned & relevance < 65 (${analysis.relevance}): ${item.title.slice(0, 30)}...`);
+            console.log(`  Keyword not mentioned & relevance < 65: ${item.title.slice(0, 30)}...`);
             continue;
           }
 
-          // 保存热点
+          // 保存热点到全局热点库
           const hotspot = await prisma.hotspot.create({
             data: {
               title: item.title,
@@ -222,38 +231,38 @@ export async function runHotspotCheck(io: Server): Promise<void> {
               authorFollowers: item.author?.followers || null,
               authorVerified: item.author?.verified ?? null,
               publishedAt: item.publishedAt || null,
-              keywordId: keyword.id
-            },
-            include: {
-              keyword: true
+              keywordId: keywordId // 关联到关键词库
             }
           });
 
           newHotspotsCount++;
           if (item.source === 'twitter') twitterProcessed++;
           else otherProcessed++;
-          console.log(`  ✅ New hotspot [${item.source}]: ${hotspot.title.slice(0, 40)}... (${analysis.importance})`);
+          console.log(`  New hotspot [${item.source}]: ${hotspot.title.slice(0, 40)}... (${analysis.importance})`);
 
-          // 创建通知（发给关键词所属用户）
-          await prisma.notification.create({
-            data: {
+          // 通知所有订阅该关键词的用户
+          for (const subscriber of subscribers) {
+            // 创建通知
+            await prisma.notification.create({
+              data: {
+                type: 'hotspot',
+                title: `发现新热点: ${hotspot.title.slice(0, 50)}`,
+                content: analysis.summary || hotspot.content.slice(0, 100),
+                hotspotId: hotspot.id,
+                userId: subscriber.userId
+              }
+            });
+
+            // WebSocket 通知
+            io.to(`keyword:${keyword.text}`).emit('hotspot:new', hotspot);
+            io.emit('notification', {
               type: 'hotspot',
-              title: `发现新热点: ${hotspot.title.slice(0, 50)}`,
-              content: analysis.summary || hotspot.content.slice(0, 100),
+              title: '发现新热点',
+              content: hotspot.title,
               hotspotId: hotspot.id,
-              userId: keyword.userId
-            }
-          });
-
-          // WebSocket 通知
-          io.to(`keyword:${keyword.text}`).emit('hotspot:new', hotspot);
-          io.emit('notification', {
-            type: 'hotspot',
-            title: '发现新热点',
-            content: hotspot.title,
-            hotspotId: hotspot.id,
-            importance: hotspot.importance
-          });
+              importance: hotspot.importance
+            });
+          }
 
           // 邮件通知（仅对高重要级别）
           if (['high', 'urgent'].includes(analysis.importance)) {
@@ -273,5 +282,5 @@ export async function runHotspotCheck(io: Server): Promise<void> {
     }
   }
 
-  console.log(`\n✨ Hotspot check completed. Found ${newHotspotsCount} new hotspots.`);
+  console.log(`\nHotspot check completed. Found ${newHotspotsCount} new hotspots.`);
 }
