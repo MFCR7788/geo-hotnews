@@ -1,5 +1,6 @@
 // JWT 工具函数
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { prisma } from '../db.js';
 
 // Access Token: 1小时有效期
@@ -23,7 +24,11 @@ export interface AuthTokens {
  */
 export function generateAccessToken(payload: TokenPayload): string {
   const secret = process.env.JWT_SECRET || 'mfcr-hotnews-jwt-secret-change-in-production';
-  return jwt.sign(payload, secret, { expiresIn: ACCESS_TOKEN_EXPIRY });
+  return jwt.sign(
+    { ...payload, jti: crypto.randomUUID() },
+    secret, 
+    { expiresIn: ACCESS_TOKEN_EXPIRY }
+  );
 }
 
 /**
@@ -31,7 +36,11 @@ export function generateAccessToken(payload: TokenPayload): string {
  */
 export function generateRefreshToken(payload: TokenPayload): string {
   const secret = process.env.JWT_SECRET || 'mfcr-hotnews-jwt-secret-change-in-production';
-  return jwt.sign(payload, secret, { expiresIn: REFRESH_TOKEN_EXPIRY });
+  return jwt.sign(
+    { ...payload, jti: crypto.randomUUID() },
+    secret, 
+    { expiresIn: REFRESH_TOKEN_EXPIRY }
+  );
 }
 
 /**
