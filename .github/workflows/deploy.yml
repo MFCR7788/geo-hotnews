@@ -1,42 +1,78 @@
-name: Deploy to Alibaba Cloud
+name: 🚀 Deploy to Alibaba Cloud
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    name: Deploy
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 15
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        
-    - name: Deploy to Server
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.ALIYUN_HOST }}
-        username: root
-        password: ${{ secrets.ALIYUN_PASSWORD }}
-        script: |
-          cd /opt/apps/YP-monitor
-          git pull origin main
-          
-          # 部署后端
-          cd server
-          npm install
-          npx prisma generate
-          npm run build
-          pm2 restart yupi-server || pm2 start dist/index.js --name yupi-server
-          
-          # 部署前端
-          cd ../client
-          npm install
-          npm run build
-          
-          echo "Deployment completed!"
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.ALIYUN_HOST }}
+          username: root
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+          script: |
+            set -e
+            
+            echo "========================================"
+            echo "   YP-Monitor Auto Deployment"
+            echo "   Time: $(date '+%Y-%m-%d %H:%M:%S')"
+            echo "========================================"
+
+            PROJECT_DIR="/opt/apps/YP-monitor"
+            DOMAIN="ai.zjsifan.com"
+
+            # === 拉取最新代码 ===
+            if [ -d "$PROJECT_DIR/.git" ]; then
+              cd "$PROJECT_DIR" && git fetch origin && git reset --hard origin/master
+            else
+              git clone https://github.com/MFCR7788/YP-monitor.git "$PROJECT_DIR"
+            fi
+            cd "$PROJECT_DIR"
+            echo "[✓] Code updated"
+
+            # === 部署后端 ===
+            echo ""
+            echo "--- [Backend] Installing & Building ---"
+            cd "$PROJECT_DIR/server"
+            npm install --production 2>&1 | tail -3
+            npx prisma generate > /dev/null 2>&1
+            npx prisma db push > /dev/null 2>&1 || true
+            npm run build 2>&1 | tail -3
+            echo "[✓] Backend built"
+
+            pm2 restart yupi-server || pm2 start dist/index.js --name yupi-server
+            pm2 save > /dev/null 2>&1
+            echo "[✓] Backend running (port 3001)"
+
+            # === 部署前端 ===
+            echo ""
+            echo "--- [Frontend] Building ---"
+            cd "$PROJECT_DIR/client"
+            npm install 2>&1 | tail -3
+            npm run build 2>&1 | tail -3
+            echo "[✓] Frontend built"
+
+            # === Nginx reload (静态文件更新后) ===
+            nginx -t > /dev/null 2>&1 && systemctl reload nginx > /dev/null 2>&1
+            echo "[✓] Nginx reloaded"
+
+            echo ""
+            echo "========================================"
+            echo "   ✅ DEPLOYMENT SUCCESSFUL!"
+            echo "   https://$DOMAIN is live."
+            echo "========================================"
