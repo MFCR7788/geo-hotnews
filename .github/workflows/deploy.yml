@@ -106,7 +106,7 @@ jobs:
               cp -n .env.example .env 2>/dev/null || true
               echo "⚠️ Using default .env.example (SERVER_ENV not set)"
             fi
-            npm install --production 2>&1 | tail -2
+            npm install 2>&1 | tail -2
             npx prisma generate > /dev/null 2>&1
             npx prisma db push > /dev/null 2>&1 || true
             npm run build 2>&1 | tail -2
@@ -114,6 +114,16 @@ jobs:
             pm2 restart yupi-server 2>/dev/null || \
             (pm2 start dist/index.js --name yupi-server)
             pm2 save > /dev/null 2>&1
+            
+            # 诊断：等待启动并检查状态
+            sleep 3
+            echo "--- PM2 Status ---"
+            pm2 list
+            echo "--- PM2 Logs (last 30 lines) ---"
+            pm2 logs yupi-server --lines 30 --nostream 2>&1 || true
+            echo "--- Port Check ---"
+            curl -s http://localhost:3001/api/health 2>/dev/null || echo "Port 3001 not responding"
+            
             echo "✅ Backend running (port 3001)"
 
             # === 前端构建 ===
