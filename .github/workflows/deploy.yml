@@ -18,6 +18,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Export SERVER_ENV
+        run: |
+          echo "SERVER_ENV<<EOF" >> $GITHUB_ENV
+          echo "${{ secrets.SERVER_ENV }}" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
       - name: Deploy via SSH
         id: deploy
         uses: appleboy/ssh-action@v1.2.0
