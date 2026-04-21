@@ -1,0 +1,42 @@
+name: Deploy to Alibaba Cloud
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Deploy to Server
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.ALIYUN_HOST }}
+        username: root
+        password: ${{ secrets.ALIYUN_PASSWORD }}
+        script: |
+          cd /opt/apps/YP-monitor
+          git pull origin main
+          
+          # 部署后端
+          cd server
+          npm install
+          npx prisma generate
+          npm run build
+          pm2 restart yupi-server || pm2 start dist/index.js --name yupi-server
+          
+          # 部署前端
+          cd ../client
+          npm install
+          npm run build
+          
+          echo "Deployment completed!"
