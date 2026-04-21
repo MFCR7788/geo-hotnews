@@ -74,7 +74,7 @@ export default function ForgotPasswordPage({ onBack }: ForgotPasswordPageProps) 
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <input
-                    type="email"
+                    type="text"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     placeholder="your@email.com"
