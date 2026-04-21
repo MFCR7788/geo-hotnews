@@ -115,14 +115,13 @@ jobs:
             (pm2 start dist/index.js --name yupi-server)
             pm2 save > /dev/null 2>&1
             
-            # 诊断：等待启动并检查状态
-            sleep 3
+            # 诊断：直接运行 node 获取完整错误堆栈
+            echo "--- Direct node test (stderr) ---"
+            cd "$D/server" && timeout 10 node dist/index.js 2>&1 || true
+            echo "--- Port check ---"
+            curl -s http://localhost:3001/ 2>&1 || echo "Port 3001 not responding"
             echo "--- PM2 Status ---"
             pm2 list
-            echo "--- PM2 Error Logs ---"
-            pm2 logs yupi-server --lines 50 --nostream --err 2>&1 || true
-            echo "--- Direct node test ---"
-            cd "$D/server" && timeout 10 node dist/index.js 2>&1 || true
             
             echo "✅ Backend running (port 3001)"
 
