@@ -5,3 +5,11 @@ dist/
 *.db-journal
 .DS_Store
 .idea/
+# Backup files
+*.bak
+*.bak.*
+# Migration scripts (dev only)
+migrate-to-supabase*.mjs
+# Test reports
+全面测试报告.md
+深度代码分析报告.md

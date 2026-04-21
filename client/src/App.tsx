@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Flame, Search, Plus, Bell, Trash2, 
@@ -96,6 +96,10 @@ function App() {
   // 系统词库
   const [libraryKeywords, setLibraryKeywords] = useState<LibraryKeyword[]>([]);
   const [selectedLibraryKeyword, setSelectedLibraryKeyword] = useState<string>('');
+  // 相似词搜索
+  const [similarKeywords, setSimilarKeywords] = useState<LibraryKeyword[]>([]);
+  const [showSimilarDropdown, setShowSimilarDropdown] = useState(false);
+  const [isSearchingSimilar, setIsSearchingSimilar] = useState(false);
 
   // 加载数据
   const loadData = useCallback(async () => {
@@ -163,6 +167,31 @@ function App() {
     } catch (error) {
       console.error('Failed to load library keywords:', error);
     }
+  }, []);
+
+  // 防抖搜索相似词
+  const similarSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSimilarSearch = useCallback((value: string) => {
+    setNewKeyword(value);
+    if (similarSearchTimer.current) clearTimeout(similarSearchTimer.current);
+    if (!value.trim()) {
+      setSimilarKeywords([]);
+      setShowSimilarDropdown(false);
+      return;
+    }
+    setIsSearchingSimilar(true);
+    similarSearchTimer.current = setTimeout(async () => {
+      try {
+        const results = await keywordsApi.searchSimilar(value.trim());
+        setSimilarKeywords(results);
+        setShowSimilarDropdown(results.length > 0);
+      } catch (error) {
+        console.error('Failed to search similar keywords:', error);
+        setSimilarKeywords([]);
+      } finally {
+        setIsSearchingSimilar(false);
+      }
+    }, 300); // 300ms 防抖
   }, []);
 
   // 切换到关键词 tab 时自动选中第一个并加载热点
@@ -262,21 +291,32 @@ function App() {
   };
 
   // 订阅关键词（从词库选择或新增）
-  const handleSubscribeKeyword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newKeyword.trim()) return;
+  const handleSubscribeKeyword = async (e?: React.FormEvent, keywordId?: string) => {
+    if (e) e.preventDefault();
+    if (!newKeyword.trim() && !keywordId) return;
 
     try {
-      const result = await keywordsApi.subscribe({ text: newKeyword.trim() });
+      // 如果提供了 keywordId，说明从相似词中选择
+      const result = keywordId
+        ? await keywordsApi.subscribe({ keywordId })
+        : await keywordsApi.subscribe({ text: newKeyword.trim() });
+      
+      if ((result as any).alreadySubscribed) {
+        setToastAndClear('该关键词已在监控列表中', 'error');
+        setNewKeyword('');
+        setSimilarKeywords([]);
+        setShowSimilarDropdown(false);
+        return;
+      }
+
       setKeywords(prev => {
-        // 检查是否已存在
         const exists = prev.some(k => k.keywordId === result.keywordId);
-        if (exists) {
-          return prev;
-        }
+        if (exists) return prev;
         return [result, ...prev];
       });
       setNewKeyword('');
+      setSimilarKeywords([]);
+      setShowSimilarDropdown(false);
       subscribeToKeywords([result.text]);
       
       // 立即触发后台扫描
@@ -1202,26 +1242,83 @@ function App() {
               {/* 添加新词 */}
               <div className="mt-4 pt-4 border-t border-white/5">
                 <p className="text-[10px] text-slate-600 mb-2 px-1 flex items-center gap-1">
-                  <Plus className="w-3 h-3" /> 添加新的监控词（添加后自动开始扫描）
+                  <Plus className="w-3 h-3" /> 添加新的监控词（输入时自动匹配词库）
                 </p>
-                <form onSubmit={handleSubscribeKeyword}>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newKeyword}
-                      onChange={(e) => setNewKeyword(e.target.value)}
-                      placeholder="输入新关键词..."
-                      className="flex-1 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-all"
-                    />
-                    <motion.button
-                      type="submit"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      disabled={!newKeyword.trim()}
-                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-medium flex items-center gap-1.5 shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </motion.button>
+                <form onSubmit={(e) => handleSubscribeKeyword(e)}>
+                  <div className="relative">
+                    <div className="flex gap-2">
+                      <div className="flex-1 relative">
+                        <input
+                          type="text"
+                          value={newKeyword}
+                          onChange={(e) => handleSimilarSearch(e.target.value)}
+                          onFocus={() => similarKeywords.length > 0 && setShowSimilarDropdown(true)}
+                          onBlur={() => setTimeout(() => setShowSimilarDropdown(false), 200)}
+                          placeholder="输入新关键词..."
+                          className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-all"
+                        />
+                        {isSearchingSimilar && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <div className="w-3.5 h-3.5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                      <motion.button
+                        type="submit"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        disabled={!newKeyword.trim()}
+                        className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-medium flex items-center gap-1.5 shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </motion.button>
+                    </div>
+                    
+                    {/* 相似词下拉提示 */}
+                    <AnimatePresence>
+                      {showSimilarDropdown && similarKeywords.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          className="absolute bottom-full left-0 right-0 mb-2 bg-[#0c0c20]/95 backdrop-blur-2xl rounded-xl border border-purple-500/20 shadow-2xl shadow-purple-500/10 overflow-hidden z-50"
+                        >
+                          <div className="px-3 py-2 border-b border-white/5">
+                            <span className="text-[10px] text-purple-400 font-medium flex items-center gap-1.5">
+                              <Crown className="w-3 h-3" />
+                              系统词库中已有相似词，点击直接选用
+                            </span>
+                          </div>
+                          <div className="max-h-48 overflow-y-auto py-1">
+                            {similarKeywords.map(kw => (
+                              <button
+                                key={kw.id}
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  handleSubscribeKeyword(undefined, kw.id);
+                                }}
+                                className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-purple-500/10 transition-colors text-left"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <Target className="w-3 h-3 text-purple-400 shrink-0" />
+                                  <span className="text-sm text-white truncate">{kw.text}</span>
+                                  {kw.category && (
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-slate-500 shrink-0">{kw.category}</span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-slate-600 shrink-0 ml-2">{kw.userCount}人使用</span>
+                              </button>
+                            ))}
+                          </div>
+                          <div className="px-3 py-2 border-t border-white/5">
+                            <span className="text-[10px] text-slate-600">
+                              没有合适的？直接点击添加按钮创建新词
+                            </span>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </form>
               </div>
