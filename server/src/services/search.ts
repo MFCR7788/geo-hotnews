@@ -242,16 +242,99 @@ export async function searchHackerNews(query: string): Promise<SearchResult[]> {
   }
 }
 
-// 去重工具函数
+// 标准化 URL 用于去重（支持微信等动态 URL）
+export function normalizeUrlForDedup(url: string, source: string): string {
+  // 搜狗跳转链接：提取目标 URL 参数
+  if (source === 'sogou' && url.includes('sogou.com/link')) {
+    try {
+      const urlObj = new URL(url);
+      const target = urlObj.searchParams.get('url');
+      if (target) return normalizeUrlForDedup(target, source);
+    } catch {}
+  }
+
+  // 微信文章
+  if (source === 'wechat' || source === 'sogou' || url.includes('mp.weixin.qq.com')) {
+    try {
+      const urlObj = new URL(url);
+      const base = urlObj.origin + urlObj.pathname;
+
+      // 格式1: mp.weixin.qq.com/s?__biz=xxx&mid=xxx&idx=xxx&sn=xxx（标准微信链接）
+      const biz = urlObj.searchParams.get('__biz') || urlObj.searchParams.get('biz');
+      const mid = urlObj.searchParams.get('mid');
+      const idx = urlObj.searchParams.get('idx');
+      const sn = urlObj.searchParams.get('sn');
+
+      if (biz && mid && idx && sn) {
+        return `${base}?__biz=${biz}&mid=${mid}&idx=${idx}&sn=${sn}`;
+      }
+
+      // 格式2: 搜狗微信链接 mp.weixin.qq.com/s?src=11&timestamp=xxx&ver=xxx&signature=xxx
+      // 用 signature 去重（同一篇文章 signature 相同，每次请求 timestamp 不同）
+      const signature = urlObj.searchParams.get('signature');
+      if (signature) {
+        // signature 在不同 ver 版本间可能不同，但同一 ver 内唯一
+        const ver = urlObj.searchParams.get('ver');
+        return `${base}?signature=${signature}&ver=${ver || ''}`;
+      }
+
+      // 其他微信链接，去掉所有动态参数
+      return base;
+    } catch {
+      return url;
+    }
+  }
+
+  // Bilibili 视频：只保留 BV 号
+  if (url.includes('bilibili.com/video/')) {
+    const match = url.match(/bilibili\.com\/video\/(BV[\w]+)/);
+    if (match) return `https://www.bilibili.com/video/${match[1]}`;
+  }
+  
+  // 标准处理：去除尾部斜杠、www 前缀、tracking 参数
+  try {
+    const urlObj = new URL(url);
+    // 去除常见 tracking 参数
+    const trackingParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'from', 'isFromMainSearch', 'new'];
+    trackingParams.forEach(p => urlObj.searchParams.delete(p));
+    const cleaned = urlObj.origin + urlObj.pathname + urlObj.search;
+    return cleaned.replace(/\/$/, '').replace(/^https?:\/\/www\./, 'https://');
+  } catch {
+    return url.replace(/\/$/, '').replace(/^https?:\/\/www\./, 'https://');
+  }
+}
+
+// 标准化标题用于去重：去除空白、标点、统一大小写
+function normalizeTitleForDedup(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[\s\u3000]+/g, '')           // 去除所有空白（含全角空格）
+    .replace(/[，。！？、；：""''【】《》（）—…·\-.!,?;:'"()\[\]{}<>\/\\@#$%^&*+=|~`]/g, '') // 去除标点
+    .slice(0, 50);                          // 取前50字符比较（避免尾部差异干扰）
+}
+
+// 去重工具函数（URL + 标题双重去重）
 export function deduplicateResults(allResults: SearchResult[]): SearchResult[] {
-  const uniqueUrls = new Set<string>();
+  const seenUrls = new Set<string>();
+  const seenTitles = new Set<string>();
+  
   return allResults.filter(item => {
-    // 标准化 URL 用于去重
-    const normalizedUrl = item.url.replace(/\/$/, '').replace(/^https?:\/\/www\./, 'https://');
-    if (uniqueUrls.has(normalizedUrl)) {
+    // URL 去重
+    const urlKey = normalizeUrlForDedup(item.url, item.source);
+    if (seenUrls.has(urlKey)) {
       return false;
     }
-    uniqueUrls.add(normalizedUrl);
+    seenUrls.add(urlKey);
+
+    // 标题去重
+    const titleKey = normalizeTitleForDedup(item.title);
+    if (titleKey.length >= 4 && seenTitles.has(titleKey)) {
+      return false;
+    }
+    if (titleKey.length >= 4) {
+      seenTitles.add(titleKey);
+    }
+
     return true;
   });
 }

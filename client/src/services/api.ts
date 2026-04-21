@@ -1,6 +1,4 @@
-import { tokenStore } from './auth.js';
-
-const API_BASE = '/api';
+import { authRequest } from './auth.js';
 
 export interface Keyword {
   id: string;
@@ -81,27 +79,9 @@ export interface Stats {
   bySource: Record<string, number>;
 }
 
+// 使用 auth.ts 中带自动刷新 Token 的请求函数
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const accessToken = tokenStore.getAccessToken();
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...options.headers
-    },
-    ...options
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || 'Request failed');
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
+  return authRequest<T>(endpoint, options);
 }
 
 // ============ 全局词库 API ============
@@ -128,6 +108,10 @@ export const keywordLibraryApi = {
 export const keywordsApi = {
   // 获取用户已订阅的关键词
   getSubscribed: () => request<UserKeyword[]>('/keywords'),
+  
+  // 搜索系统词库中的相似词（输入时实时调用）
+  searchSimilar: (q: string) => 
+    request<LibraryKeyword[]>(`/keywords/similar?q=${encodeURIComponent(q)}`),
   
   // 订阅关键词（从词库选择或新增）
   subscribe: (data: { keywordId?: string; text?: string; category?: string }) =>

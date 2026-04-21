@@ -1,7 +1,7 @@
 import { Server } from 'socket.io';
 import { prisma } from '../db.js';
 import { searchTwitter } from '../services/twitter.js';
-import { searchBing, searchHackerNews, deduplicateResults } from '../services/search.js';
+import { searchBing, searchHackerNews, deduplicateResults, normalizeUrlForDedup } from '../services/search.js';
 import { searchSogou, searchBilibili, searchWeibo, detectAndFetchAccount } from '../services/chinaSearch.js';
 import { searchZhihu, searchZhihuKeyword, searchToutiao, searchRSSFeeds } from '../services/newsSources.js';
 import { analyzeContent, expandKeyword, preMatchKeyword } from '../services/ai.js';
@@ -170,15 +170,28 @@ export async function runHotspotCheck(io: Server): Promise<void> {
         if (twitterProcessed + otherProcessed >= TWITTER_QUOTA + OTHER_QUOTA) break;
 
         try {
-          // 检查是否已存在
+          // 检查是否已存在（URL 去重 + 标题去重）
+          const normalizedUrl = normalizeUrlForDedup(item.url, item.source);
+          const normalizedTitle = item.title
+            .toLowerCase()
+            .replace(/[\s\u3000]+/g, '')
+            .replace(/[，。！？、；：""''【】《》（）—…·\-.!,?;:'"()\[\]{}<>\/\\@#$%^&*+=|~`]/g, '')
+            .slice(0, 50);
+
           const existing = await prisma.hotspot.findFirst({
             where: {
-              url: item.url,
-              source: item.source
+              OR: [
+                { url: normalizedUrl },
+                { source: item.source, title: item.title },
+                ...(normalizedTitle.length >= 4 ? [{
+                  title: { contains: item.title.slice(0, 30), mode: 'insensitive' as const }
+                }] : [])
+              ]
             }
           });
 
           if (existing) {
+            console.log(`  Duplicate skipped: ${item.title.slice(0, 30)}... (matched by ${existing.url === normalizedUrl ? 'URL' : 'title'})`);
             continue;
           }
 

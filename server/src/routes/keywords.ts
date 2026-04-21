@@ -87,6 +87,66 @@ router.post('/library', async (req: Request, res: Response) => {
   }
 });
 
+// ============ 相似词搜索 API ============
+
+// 搜索系统词库中的相似词（输入时实时调用）
+router.get('/similar', async (req: Request, res: Response) => {
+  try {
+    const q = (req.query.q as string || '').trim();
+    if (!q || q.length < 1) {
+      return res.json([]);
+    }
+
+    // 获取当前用户已订阅的关键词ID，用于排除
+    const subscribed = await prisma.userKeyword.findMany({
+      where: { userId: req.user!.userId },
+      select: { keywordId: true }
+    });
+    const subscribedIds = new Set(subscribed.map(s => s.keywordId));
+
+    // 多策略搜索相似词：
+    // 1. 前缀匹配（权重最高）
+    // 2. 包含匹配
+    // 3. 模糊相似（PostgreSQL pg_trgm 相似度，如可用）
+    const results = await prisma.keywordLibrary.findMany({
+      where: {
+        OR: [
+          { text: { startsWith: q, mode: 'insensitive' } },
+          { text: { contains: q, mode: 'insensitive' } },
+        ]
+      },
+      orderBy: [
+        { userCount: 'desc' },
+        { createdAt: 'desc' }
+      ],
+      take: 20
+    });
+
+    // 按匹配度排序：前缀匹配 > 包含匹配，并排除已订阅的
+    const ranked = results
+      .filter(kw => !subscribedIds.has(kw.id))
+      .map(kw => {
+        const lowerText = kw.text.toLowerCase();
+        const lowerQ = q.toLowerCase();
+        let score = 0;
+        if (lowerText === lowerQ) score = 100;        // 完全匹配
+        else if (lowerText.startsWith(lowerQ)) score = 80;  // 前缀匹配
+        else if (lowerText.includes(lowerQ)) score = 60;    // 包含匹配
+        else score = 40;                                    // 其他
+        // 加上人气权重
+        score += Math.min(kw.userCount * 2, 20);
+        return { ...kw, score };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+
+    res.json(ranked.map(({ score, ...kw }) => kw));
+  } catch (error) {
+    console.error('Error searching similar keywords:', error);
+    res.status(500).json({ error: 'Failed to search similar keywords' });
+  }
+});
+
 // ============ 用户订阅管理 API ============
 
 // 获取当前用户已订阅的关键词
