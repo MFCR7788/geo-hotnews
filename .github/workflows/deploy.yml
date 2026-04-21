@@ -73,11 +73,17 @@ jobs:
 
             # === 环境准备（幂等）===
             echo "--- [1/7] Environment setup ---"
-            which node >/dev/null 2>&1 || {
-              echo "Installing Node.js 20 LTS..."
+            NODE_VERSION=$(node --version 2>/dev/null | sed 's/v//')
+            NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d. -f1)
+            echo "当前 Node.js: $NODE_VERSION"
+            if [ "$NODE_MAJOR" -lt 20 ] 2>/dev/null; then
+              echo "Node.js 版本过低 (< 20)，升级到 20 LTS..."
               curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
               apt-get install -y -qq nodejs > /dev/null 2>&1
-            }
+              echo "升级完成: $(node --version)"
+            else
+              echo "Node.js 版本满足要求 (>= 20)"
+            fi
             npm install -g pm2 > /dev/null 2>&1 || true
             which nginx >/dev/null 2>&1 || apt-get install -y -qq nginx > /dev/null 2>&1
             which git >/dev/null 2>&1 || apt-get install -y -qq git > /dev/null 2>&1
