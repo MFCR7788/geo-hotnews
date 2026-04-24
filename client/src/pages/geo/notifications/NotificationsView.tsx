@@ -26,8 +26,8 @@ export default function NotificationsView() {
 
   useEffect(() => {
     notificationApi.getList({ limit: 50 })
-      .then((res: NotificationItem[]) => {
-        const items = Array.isArray(res) ? res : []
+      .then((res: any) => {
+        const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []
         setNotifications(items)
       })
       .catch(() => setNotifications([]))

@@ -77,8 +77,8 @@ export default function GeoDashboard() {
     }
     try {
       const res = await notificationApi.getList({ limit: 5 })
-      if (Array.isArray(res)) {
-        setAlerts(res.slice(0, 5).map((n: any) => ({
+      if (res?.data && Array.isArray(res.data)) {
+        setAlerts(res.data.slice(0, 5).map((n: any) => ({
           id: n.id,
           level: n.type === 'alert' ? 'high' : n.type === 'warning' ? 'medium' : 'low',
           message: n.title || n.content || '-',
