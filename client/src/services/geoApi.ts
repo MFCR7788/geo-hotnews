@@ -638,15 +638,23 @@ export const dashboardApi = {
 // ==================== 通知 ====================
 
 export const notificationApi = {
-  getList: (params?: { limit?: number }) =>
-    geoRequest<NotificationItem[]>(`/geo/notifications`, { params }),
+  getList: (params?: { page?: number; limit?: number; unreadOnly?: boolean }) =>
+    geoRequest<{ data: NotificationItem[]; unreadCount: number; pagination: { page: number; limit: number; total: number; totalPages: number } }>(`/notifications`, { params }),
 
-  getUnreadCount: () =>
-    geoRequest<{ count: number }>(`/geo/notifications/unread-count`),
+  getUnreadCount: async () => {
+    const res = await geoRequest<{ data: NotificationItem[]; unreadCount: number }>(`/notifications`, { params: { limit: 1 } })
+    return res.unreadCount ?? 0
+  },
 
   markRead: (id: string) =>
-    geoRequest<void>(`/geo/notifications/${id}/read`, { method: 'PUT' }),
+    geoRequest<NotificationItem>(`/notifications/${id}/read`, { method: 'PATCH' }),
 
   markAllRead: () =>
-    geoRequest<void>(`/geo/notifications/read-all`, { method: 'POST' }),
+    geoRequest<{ message: string }>(`/notifications/read-all`, { method: 'PATCH' }),
+
+  delete: (id: string) =>
+    geoRequest<void>(`/notifications/${id}`, { method: 'DELETE' }),
+
+  clearAll: () =>
+    geoRequest<{ message: string }>(`/notifications`, { method: 'DELETE' }),
 }
