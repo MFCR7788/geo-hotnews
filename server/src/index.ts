@@ -15,6 +15,13 @@ import adminRouter from './routes/admin.js';
 import subscriptionRouter from './routes/subscription.js';
 import paymentsRouter from './routes/payments.js';
 import uploadRouter from './routes/upload.js';
+// GEO 引擎路由
+import contentRouter from './routes/content.js';
+import knowledgeRouter from './routes/knowledge.js';
+import monitorRouter from './routes/monitor.js';
+import strategyRouter from './routes/strategy.js';
+import videoRouter from './routes/video.js';
+import geoCheckRouter from './routes/geo-check.js';
 import { apiLimiter, loginLimiter, registerLimiter } from './middleware/rateLimit.js';
 import { requireAuth } from './middleware/auth.js';
 import { runHotspotCheck } from './jobs/hotspotChecker.js';
@@ -66,6 +73,14 @@ app.use('/api/payments', paymentsRouter);
 
 // 图片上传路由
 app.use('/api/upload', uploadRouter);
+
+// GEO 引擎路由（所有路由都需要认证）
+app.use('/api/geo/content', requireAuth, contentRouter);
+app.use('/api/geo/knowledge', requireAuth, knowledgeRouter);
+app.use('/api/geo/monitor', requireAuth, monitorRouter);
+app.use('/api/geo/strategy', requireAuth, strategyRouter);
+app.use('/api/geo/video', requireAuth, videoRouter);
+app.use('/api/geo/geo-check', requireAuth, geoCheckRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

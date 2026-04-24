@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, AlertCircle, Phone, Clock, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext.js';
 
 interface LoginPageProps {
-  onSwitchToRegister: () => void;
+  onSwitchToRegister?: () => void;
   onForgotPassword?: () => void;
 }
 
 export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
+  const navigate = useNavigate();
   const { loginWithSms } = useAuth();
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -33,7 +35,7 @@ export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
 
       if (!checkData.registered) {
         setError('该手机号未注册，即将跳转到注册页面...');
-        setTimeout(() => onSwitchToRegister(), 1500);
+        setTimeout(() => onSwitchToRegister?.() ?? navigate('/register'), 1500);
         return;
       }
 
@@ -201,7 +203,7 @@ export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
           <div className="mt-6 text-center text-sm text-slate-500">
             还没有账户？
             <button
-              onClick={onSwitchToRegister}
+              onClick={() => onSwitchToRegister?.() ?? navigate('/register')}
               className="text-blue-400 hover:text-blue-300 transition-colors ml-1"
             >
               立即注册

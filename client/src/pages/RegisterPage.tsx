@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, AlertCircle, CheckCircle, Phone, Clock, User } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext.js';
 
 interface RegisterPageProps {
-  onSwitchToLogin: () => void;
+  onSwitchToLogin?: () => void;
 }
 
 export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
+  const navigate = useNavigate();
   const { registerWithSms } = useAuth();
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -115,7 +117,7 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
               <h3 className="text-white font-semibold text-lg mb-2">注册成功！</h3>
               <p className="text-slate-400 text-sm mb-6">请返回登录页面登录</p>
               <button
-                onClick={onSwitchToLogin}
+                onClick={() => onSwitchToLogin?.() ?? navigate('/login')}
                 className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-medium py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
               >
                 <Zap className="w-4 h-4" />
@@ -227,7 +229,7 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
             <div className="mt-6 text-center text-sm text-slate-500">
               已有账户？
               <button
-                onClick={onSwitchToLogin}
+                onClick={() => onSwitchToLogin?.() ?? navigate('/login')}
                 className="text-blue-400 hover:text-blue-300 transition-colors ml-1"
               >
                 立即登录

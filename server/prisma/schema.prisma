@@ -31,6 +31,12 @@ model User {
   hotspotViews     UserHotspotView[]
   userKeywords     UserKeyword[]
   settings         UserSettings?
+  contents         Content[]
+  knowledgeEntries KnowledgeEntry[]
+  monitorTasks     MonitorTask[]
+  strategies       Strategy[]
+  videoAssets      VideoAsset[]
+  geoReports       GeoReport[]
 }
 
 model RefreshToken {
@@ -233,4 +239,211 @@ model SmsCode {
   code      String
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+// ============================================================
+// GEO 引擎模块（内容引擎/知识库/监测/策略/视频/GEO体检）
+// ============================================================
+
+// 内容模板
+model ContentTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  category    String   // seasonal|product|competitor|platform
+  platform    String   // douyin|xiaohongshu|weibo|zhihu|bilibili|all
+  contentType String   // article|video-script|short-video
+  prompt      String
+  variables   String?  // JSON, e.g. ["brandName","industry","keywords"]
+  isActive    Boolean @default(true)
+  usageCount  Int     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  contents    Content[]
+}
+
+// 内容记录
+model Content {
+  id           String   @id @default(uuid())
+  userId       String
+  templateId   String?
+  title        String
+  body         String?
+  formattedBody String? // 平台适配格式
+  platform     String   // douyin|xiaohongshu|weibo|zhihu|bilibili|all
+  industry     String?
+  brandName    String?
+  keywords     String?  // JSON array string
+  status       String   @default("draft") // draft|published|archived
+  images       String?  // JSON array string
+  metadata     String?  // JSON object
+  complianceScore Int?  @default(0)
+  publishedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template     ContentTemplate?  @relation(fields: [templateId], references: [id])
+}
+
+// 品牌知识库条目
+model KnowledgeEntry {
+  id          String   @id @default(uuid())
+  userId      String
+  brand       String
+  category    String   // 冲锋衣|防晒衣|其他面料|辅料|工艺
+  subCategory String?
+  name        String
+  description String?
+  specs       String?  // JSON object: 面料参数/辅料参数等
+  tags        String?  // JSON array string
+  source      String?  // 来源
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, category])
+  @@index([userId, brand])
+}
+
+// 监测任务
+model MonitorTask {
+  id           String   @id @default(uuid())
+  userId       String
+  name         String
+  keywords     String   // JSON array string
+  platforms    String   // JSON array string
+  competitors  String?  // JSON array string
+  interval     Int      @default(60)  // 分钟
+  isActive     Boolean  @default(true)
+  lastRunAt    DateTime?
+  totalRecords Int      @default(0)
+  aiSummary    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  records      MonitorRecord[]
+}
+
+// 监测记录
+model MonitorRecord {
+  id            String   @id @default(uuid())
+  taskId        String
+  platform      String
+  keyword       String
+  mentionCount  Int      @default(0)
+  recommendCount Int     @default(0)
+  rankPosition  Int?
+  sentiment     String?  // positive|neutral|negative
+  isMentioned   Boolean  @default(false)
+  summary       String?
+  topContent    String?  // JSON array of top content snippets
+  trend         String?  // rising|stable|declining
+  createdAt     DateTime @default(now())
+  task          MonitorTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, platform])
+  @@index([taskId, createdAt])
+}
+
+// 策略计划
+model Strategy {
+  id            String   @id @default(uuid())
+  userId        String
+  name          String
+  category      String   // seasonal|product|competitor|platform
+  platform      String   @default("all")
+  status        String   @default("draft") // draft|active|paused|completed
+  description   String?
+  startDate     DateTime?
+  endDate       DateTime?
+  budget        Int?
+  engagement    Float?
+  roi           Float?
+  views         Int      @default(0)
+  clicks        Int      @default(0)
+  conversions   Int      @default(0)
+  keywords      String?  // JSON array
+  contentPillars String? // JSON array
+  platforms     String?  // JSON array
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phases        StrategyPhase[]
+  kols          StrategyKol[]
+
+  @@index([userId, status])
+}
+
+// 策略阶段
+model StrategyPhase {
+  id          String   @id @default(uuid())
+  strategyId  String
+  name        String
+  content     String?
+  platforms   String?  // JSON array
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  strategy    Strategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+}
+
+// KOL合作记录
+model StrategyKol {
+  id                String   @id @default(uuid())
+  strategyId        String
+  name              String
+  platform          String
+  followers         Int      @default(0)   // 万
+  cost              Int      @default(0)  // 元
+  estimatedReach    Int      @default(0)  // 预估触达
+  actualReach       Int?
+  engagement        Float?
+  status            String   @default("pending") // pending|cooperating|completed
+  createdAt         DateTime @default(now())
+  strategy          Strategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+}
+
+// 视频资产
+model VideoAsset {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  description String?
+  fileUrl     String?
+  coverUrl    String?
+  duration    Int?     // 秒
+  platform    String   // douyin|xiaohongshu|weibo|zhihu|bilibili|local
+  status      String   @default("uploading") // uploading|ready|published|failed
+  fileSize    Int?     // bytes
+  width       Int?
+  height      Int?
+  tags        String?  // JSON array
+  metadata    String?  // JSON object: 脚本/剪辑参数等
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, platform])
+  @@index([userId, status])
+}
+
+// GEO体检报告
+model GeoReport {
+  id           String   @id @default(uuid())
+  userId       String
+  brand        String
+  industry     String
+  platforms    String   // JSON array
+  keywords     String   // JSON array
+  competitors  String?  // JSON array
+  status       String   @default("pending") // pending|generating|completed|failed
+  overallScore Int?     // 0-100
+  dimensions   String?  // JSON object: 各维度得分
+  summary      String?
+  suggestions  String?  // JSON array
+  keywordDetails String? // JSON object
+  createdAt    DateTime @default(now())
+  completedAt  DateTime?
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }

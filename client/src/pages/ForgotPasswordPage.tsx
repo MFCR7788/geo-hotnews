@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import { authApi } from '../services/auth.js';
 
 interface ForgotPasswordPageProps {
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 export default function ForgotPasswordPage({ onBack }: ForgotPasswordPageProps) {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -60,7 +62,7 @@ export default function ForgotPasswordPage({ onBack }: ForgotPasswordPageProps) 
                 如果 <span className="text-white">{email}</span> 已注册，重置链接已发往该邮箱，请在 1 小时内完成重置。
               </p>
               <button
-                onClick={onBack}
+                onClick={() => onBack?.() ?? navigate('/login')}
                 className="text-blue-400 hover:text-blue-300 transition-colors text-sm flex items-center gap-1 mx-auto"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -103,7 +105,7 @@ export default function ForgotPasswordPage({ onBack }: ForgotPasswordPageProps) 
 
               <button
                 type="button"
-                onClick={onBack}
+                onClick={() => onBack?.() ?? navigate('/login')}
                 className="w-full text-slate-500 hover:text-slate-300 transition-colors text-sm flex items-center justify-center gap-1"
               >
                 <ArrowLeft className="w-4 h-4" />
