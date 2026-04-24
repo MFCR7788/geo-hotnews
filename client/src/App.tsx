@@ -58,8 +58,26 @@ function getHeatLevel(score: number): { label: string; color: string } {
 }
 
 function App() {
-  const { user, isLoading, isLoggedIn, logout } = useAuth();
+  const { user, settings, isLoading, isLoggedIn, logout } = useAuth();
   console.log('[App] Render - isLoading:', isLoading, 'isLoggedIn:', isLoggedIn, 'user:', user ? user.email : null);
+  
+  // 应用主题
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('themeMode') || (settings?.themeMode || 'dark');
+    const html = document.documentElement;
+    const body = document.body;
+    if (savedTheme === 'dark') {
+      html.classList.add('dark');
+      html.classList.remove('light');
+      body.classList.add('dark');
+      body.classList.remove('light');
+    } else {
+      html.classList.add('light');
+      html.classList.remove('dark');
+      body.classList.add('light');
+      body.classList.remove('dark');
+    }
+  }, [settings]);
   const [authPage, setAuthPage] = useState<'login' | 'register' | 'forgot'>('login');
   const [showSettings, setShowSettings] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -562,10 +580,10 @@ function App() {
             {/* Logo */}
             <div className="flex items-center gap-4">
               <div className="relative">
-                <img src="/logo.png" alt="MFCR" className="w-10 h-10 rounded-xl object-contain shadow-lg shadow-blue-500/20" />
+                <img src="/logo.png" alt="GEO星擎" className="w-10 h-10 rounded-xl object-contain shadow-lg shadow-blue-500/20" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-white tracking-tight">MFCR-HotNews</h1>
+                <h1 className="text-lg font-semibold text-white tracking-tight">GEO星擎</h1>
                 <p className="text-xs text-slate-500">热点监控系统</p>
               </div>
             </div>
@@ -602,7 +620,11 @@ function App() {
               </button>
 
               {/* Notifications */}
-              <div className="relative">
+              <div
+                className="relative"
+                onMouseEnter={() => setShowNotifications(true)}
+                onMouseLeave={() => setShowNotifications(false)}
+              >
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
                   className="relative p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all"
@@ -621,7 +643,8 @@ function App() {
                       initial={{ opacity: 0, y: 8, scale: 0.96 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                      className="absolute right-0 top-14 w-80 bg-[#0a0a1a]/95 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-14 w-80 bg-[#0a0a1a]/95 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden z-50"
                     >
                       <div className="flex items-center justify-between p-4 border-b border-white/5">
                         <h3 className="font-medium text-white">通知</h3>
@@ -637,8 +660,23 @@ function App() {
                         ) : (
                           <div className="divide-y divide-white/5">
                             {notifications.slice(0, 5).map(n => (
-                              <div key={n.id} className={cn("p-4 transition-colors", n.isRead ? 'opacity-50' : 'hover:bg-white/5')}>
-                                <p className="text-sm font-medium text-white">{n.title}</p>
+                              <div
+                                key={n.id}
+                                onClick={() => {
+                                  if (n.hotspotUrl) {
+                                    window.open(n.hotspotUrl, '_blank', 'noopener,noreferrer');
+                                  }
+                                }}
+                                className={cn(
+                                  "p-4 transition-colors",
+                                  n.hotspotUrl ? "cursor-pointer" : "cursor-default",
+                                  n.isRead ? 'opacity-50' : 'hover:bg-white/5'
+                                )}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-sm font-medium text-white flex-1">{n.title}</p>
+                                  <span className="text-[10px] text-slate-600 shrink-0">{relativeTime(n.createdAt)}</span>
+                                </div>
                                 <p className="text-xs text-slate-500 mt-1 line-clamp-2">{n.content}</p>
                               </div>
                             ))}
@@ -799,7 +837,7 @@ function App() {
                 />
               </div>
               
-              {isLoading ? (
+              {isDataLoading ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
                 </div>
@@ -1479,12 +1517,12 @@ function App() {
                 </div>
                 <motion.button 
                   type="submit" 
-                  disabled={isLoading}
+                  disabled={isDataLoading}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-medium flex items-center gap-2 shadow-lg shadow-blue-500/25 disabled:opacity-50"
                 >
-                  {isLoading ? (
+                  {isDataLoading ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <Search className="w-4 h-4" />

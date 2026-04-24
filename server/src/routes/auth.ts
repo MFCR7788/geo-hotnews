@@ -5,8 +5,32 @@ import { prisma } from '../db.js';
 import { createAuthTokens, refreshAccessToken, revokeAllUserTokens, revokeToken } from '../utils/jwt.js';
 import { requireAuth } from '../middleware/auth.js';
 import upload from '../middleware/upload.js';
+import { sendVerificationCode, generateVerificationCode } from '../services/sms.js';
 
 const router = Router();
+
+/**
+ * GET /api/auth/check-phone
+ * 检查手机号是否已注册
+ */
+router.get('/check-phone', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { phone } = req.query;
+    if (!phone || typeof phone !== 'string') {
+      res.status(400).json({ error: '手机号必填' });
+      return;
+    }
+    if (!/^1[3-9]\d{9}$/.test(phone)) {
+      res.status(400).json({ error: '手机号格式不正确' });
+      return;
+    }
+    const user = await prisma.user.findUnique({ where: { phone } });
+    res.json({ registered: !!user });
+  } catch (error) {
+    console.error('Check phone error:', error);
+    res.status(500).json({ error: '检查失败' });
+  }
+});
 
 /**
  * POST /api/auth/register
@@ -61,7 +85,11 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
     });
 
     // 生成 Token
-    const tokens = await createAuthTokens(user);
+    const tokens = await createAuthTokens({
+      id: user.id,
+      email: user.email || '',
+      role: user.role
+    });
 
     res.status(201).json({
       message: '注册成功',
@@ -121,14 +149,14 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     }
 
     // 验证密码
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password || '');
     if (!isPasswordValid) {
       res.status(401).json({ error: '邮箱或密码不正确' });
       return;
     }
 
     // 生成 Token
-    const tokens = await createAuthTokens({ id: user.id, email: user.email, role: user.role });
+    const tokens = await createAuthTokens({ id: user.id, email: user.email || '', role: user.role });
 
     const { password: _pw, ...userWithoutPassword } = user;
 
@@ -238,12 +266,13 @@ router.get('/me', requireAuth, async (req: Request, res: Response): Promise<void
  */
 router.put('/me', requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name } = req.body;
+    const { name, email } = req.body;
 
     const user = await prisma.user.update({
       where: { id: req.user!.userId },
       data: {
-        ...(name !== undefined && { name: name?.trim() || null })
+        ...(name !== undefined && { name: name?.trim() || null }),
+        ...(email !== undefined && { email: email?.trim() || null })
       },
       select: {
         id: true,
@@ -255,7 +284,11 @@ router.put('/me', requireAuth, async (req: Request, res: Response): Promise<void
     });
 
     res.json(user);
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      res.status(409).json({ error: '该邮箱已被使用' });
+      return;
+    }
     console.error('Update me error:', error);
     res.status(500).json({ error: '更新用户信息失败' });
   }
@@ -289,7 +322,7 @@ router.put('/change-password', requireAuth, async (req: Request, res: Response):
       return;
     }
 
-    const isValid = await bcrypt.compare(oldPassword, user.password);
+    const isValid = await bcrypt.compare(oldPassword, user.password || '');
     if (!isValid) {
       res.status(401).json({ error: '原密码不正确' });
       return;
@@ -475,6 +508,225 @@ router.post('/upload-logo', requireAuth, upload.single('image'), async (req: Req
   } catch (error: any) {
     console.error('Upload logo error:', error);
     res.status(500).json({ error: error.message || '上传失败' });
+  }
+});
+
+/**
+ * POST /api/auth/send-sms
+ * 发送短信验证码
+ */
+router.post('/send-sms', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { phone } = req.body;
+
+    if (!phone) {
+      res.status(400).json({ error: '手机号必填' });
+      return;
+    }
+
+    if (!/^1[3-9]\d{9}$/.test(phone)) {
+      res.status(400).json({ error: '手机号格式不正确' });
+      return;
+    }
+
+    const existingCode = await prisma.smsCode.findFirst({
+      where: { phone, createdAt: { gt: new Date(Date.now() - 60 * 1000) } }
+    });
+
+    if (existingCode) {
+      const remainingSeconds = Math.ceil((existingCode.createdAt.getTime() + 60 * 1000 - Date.now()) / 1000);
+      res.status(429).json({ 
+        error: `验证码已发送，请${remainingSeconds}秒后重试`,
+        retryAfter: remainingSeconds
+      });
+      return;
+    }
+
+    const code = generateVerificationCode(6);
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    const result = await sendVerificationCode(phone, code);
+
+    if (result.success) {
+      await prisma.smsCode.create({
+        data: { phone, code, expiresAt }
+      });
+      res.json({ message: '验证码已发送，请注意查收' });
+    } else {
+      res.status(500).json({ error: result.message || '短信发送失败' });
+    }
+  } catch (error) {
+    console.error('Send SMS error:', error);
+    res.status(500).json({ error: '发送验证码失败' });
+  }
+});
+
+/**
+ * POST /api/auth/verify-sms
+ * 验证短信验证码
+ */
+router.post('/verify-sms', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { phone, code } = req.body;
+
+    if (!phone || !code) {
+      res.status(400).json({ error: '手机号和验证码必填' });
+      return;
+    }
+
+    const smsCode = await prisma.smsCode.findFirst({
+      where: { phone, code, expiresAt: { gt: new Date() } }
+    });
+
+    if (!smsCode) {
+      res.status(400).json({ error: '验证码无效或已过期' });
+      return;
+    }
+
+    await prisma.smsCode.delete({ where: { id: smsCode.id } });
+
+    res.json({ message: '验证码验证成功' });
+  } catch (error) {
+    console.error('Verify SMS error:', error);
+    res.status(500).json({ error: '验证失败' });
+  }
+});
+
+/**
+ * POST /api/auth/login-sms
+ * 短信验证码登录
+ */
+router.post('/login-sms', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { phone, code } = req.body;
+
+    if (!phone || !code) {
+      res.status(400).json({ error: '手机号和验证码必填' });
+      return;
+    }
+
+    const smsCode = await prisma.smsCode.findFirst({
+      where: { phone, code, expiresAt: { gt: new Date() } }
+    });
+
+    if (!smsCode) {
+      res.status(400).json({ error: '验证码无效或已过期' });
+      return;
+    }
+
+    await prisma.smsCode.delete({ where: { id: smsCode.id } });
+
+    let user = await prisma.user.findUnique({
+      where: { phone },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isBanned: true,
+        settings: {
+          select: {
+            logoUrl: true,
+            themeMode: true,
+            themeColor: true,
+            sourcePrefs: true,
+            notifyEmail: true,
+            notifyWeb: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      res.status(404).json({ error: '该手机号未注册，请先注册' });
+      return;
+    }
+
+    if (user.isBanned) {
+      res.status(403).json({ error: '账号已被封禁，请联系管理员' });
+      return;
+    }
+
+    const tokens = await createAuthTokens({ id: user.id, email: user.email || '', role: user.role });
+
+    res.json({
+      message: '登录成功',
+      user,
+      ...tokens
+    });
+  } catch (error) {
+    console.error('Login with SMS error:', error);
+    res.status(500).json({ error: '登录失败' });
+  }
+});
+
+/**
+ * POST /api/auth/register-sms
+ * 短信验证码注册
+ */
+router.post('/register-sms', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { phone, code, password, name } = req.body;
+
+    if (!phone || !code) {
+      res.status(400).json({ error: '手机号和验证码必填' });
+      return;
+    }
+
+    const smsCode = await prisma.smsCode.findFirst({
+      where: { phone, code, expiresAt: { gt: new Date() } }
+    });
+
+    if (!smsCode) {
+      res.status(400).json({ error: '验证码无效或已过期' });
+      return;
+    }
+
+    await prisma.smsCode.delete({ where: { id: smsCode.id } });
+
+    const existing = await prisma.user.findUnique({ where: { phone } });
+    if (existing) {
+      res.status(409).json({ error: '该手机号已被注册' });
+      return;
+    }
+
+    let hashedPassword: string | undefined;
+    if (password) {
+      if (password.length < 6) {
+        res.status(400).json({ error: '密码至少6位' });
+        return;
+      }
+      hashedPassword = await bcrypt.hash(password, 12);
+    }
+
+    const user = await prisma.user.create({
+      data: {
+        phone,
+        password: hashedPassword,
+        name: name?.trim() || null,
+        settings: {
+          create: {}
+        }
+      },
+      select: {
+        id: true,
+        phone: true,
+        name: true,
+        role: true,
+        createdAt: true
+      }
+    });
+
+    const tokens = await createAuthTokens({ id: user.id, email: '', role: user.role });
+
+    res.status(201).json({
+      message: '注册成功',
+      user,
+      ...tokens
+    });
+  } catch (error) {
+    console.error('Register with SMS error:', error);
+    res.status(500).json({ error: '注册失败' });
   }
 });
 

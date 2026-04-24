@@ -92,10 +92,28 @@ export interface Payment {
   createdAt: string;
 }
 
+// 无认证请求
+async function requestPublic<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers
+    },
+    ...options
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(error.error || error.message || 'Request failed');
+  }
+
+  return response.json();
+}
+
 // 订阅 API
 export const subscriptionApi = {
-  // 获取所有套餐列表
-  getPlans: () => requestWithAuth<Plan[]>('/subscription/plans'),
+  // 获取所有套餐列表（公开）
+  getPlans: () => requestPublic<Plan[]>('/subscription/plans'),
 
   // 获取当前订阅状态
   getStatus: () => requestWithAuth<SubscriptionStatus>('/subscription'),

@@ -7,7 +7,9 @@ interface AuthContextType {
   isLoading: boolean;
   isLoggedIn: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithSms: (phone: string, code: string) => Promise<void>;
   register: (email: string, password: string, name?: string) => Promise<void>;
+  registerWithSms: (phone: string, code: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateSettings: (s: Partial<UserSettings>) => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -52,8 +54,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (data.user?.settings) setSettings(data.user.settings);
   };
 
+  const loginWithSms = async (phone: string, code: string) => {
+    const data = await authApi.loginWithSms(phone, code);
+    setUser(data.user);
+    if (data.user?.settings) setSettings(data.user.settings);
+  };
+
   const register = async (email: string, password: string, name?: string) => {
     const data = await authApi.register(email, password, name);
+    setUser(data.user);
+  };
+
+  const registerWithSms = async (phone: string, code: string, name?: string) => {
+    const data = await authApi.registerWithSms(phone, code, name);
     setUser(data.user);
   };
 
@@ -75,7 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       isLoggedIn: !!user,
       login,
+      loginWithSms,
       register,
+      registerWithSms,
       logout,
       updateSettings,
       refreshUser

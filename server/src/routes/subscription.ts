@@ -8,9 +8,6 @@ import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
-// 所有路由需要登录
-router.use(requireAuth);
-
 // 获取所有套餐列表（公开）
 router.get('/plans', async (req, res) => {
   try {
@@ -33,7 +30,7 @@ router.get('/plans', async (req, res) => {
 });
 
 // 获取当前用户订阅状态
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
 
@@ -128,7 +125,7 @@ router.get('/', async (req, res) => {
 });
 
 // 取消订阅（取消自动续费）
-router.post('/cancel', async (req, res) => {
+router.post('/cancel', requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
 
@@ -161,7 +158,7 @@ router.post('/cancel', async (req, res) => {
 });
 
 // 恢复订阅
-router.post('/resume', async (req, res) => {
+router.post('/resume', requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
 
@@ -205,7 +202,7 @@ router.post('/resume', async (req, res) => {
 });
 
 // 获取配额使用情况
-router.get('/usage', async (req, res) => {
+router.get('/usage', requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
 
@@ -249,7 +246,7 @@ router.get('/usage', async (req, res) => {
 });
 
 // 获取支付历史
-router.get('/payments', async (req, res) => {
+router.get('/payments', requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const page = parseInt(req.query.page as string) || 1;

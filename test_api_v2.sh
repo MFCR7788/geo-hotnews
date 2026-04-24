@@ -342,7 +342,7 @@ else
     # 3.2 添加新关键词到词库
     sleep 1
     KW_TEXT="AI_FuncTest_$(date +%s)"
-    add_kw_resp=$(api_request "POST" "/api/keywords/library" "{\"text\":\"$KW_TEXT\",\"category\":\"测试分类\"}" "" "$ACCESS_TOKEN")
+    add_kw_resp=$(api_request "POST" "/api/keywords/library" "{\"text\":\"$KW_TEXT\",\"category\":\"测试分类\"}" "$ACCESS_TOKEN")
     http_code=$(echo "$add_kw_resp" | tail -n1)
     body=$(echo "$add_kw_resp" | sed '$d')
     
@@ -358,7 +358,7 @@ else
     # 3.3 订阅关键词
     if [ -n "$KEYWORD_ID" ]; then
         sleep 1
-        subscribe_resp=$(api_request "POST" "/api/keywords/subscribe" "{\"keywordId\":\"$KEYWORD_ID\"}" "" "$ACCESS_TOKEN")
+        subscribe_resp=$(api_request "POST" "/api/keywords/subscribe" "{\"keywordId\":\"$KEYWORD_ID\"}" "$ACCESS_TOKEN")
         http_code=$(echo "$subscribe_resp" | tail -n1)
         body=$(echo "$subscribe_resp" | sed '$d')
         

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
-  User, Mail, Lock, Upload, Palette, Globe, Bell,
+  User, Lock, Upload, Palette, Globe, Bell,
   CheckCircle, AlertCircle, ChevronRight, X, Sun, Moon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
@@ -46,6 +46,7 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
 
   // 表单状态
   const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -96,7 +97,7 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      await authApi.updateMe({ name });
+      await authApi.updateMe({ name, email });
       await refreshUser();
       showFeedback('success', '个人资料已保存');
     } catch (err: any) {
@@ -135,7 +136,20 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
         notifyHighOnly,
         ...extra
       });
+      await refreshUser();
       showFeedback('success', '设置已保存');
+      
+      // 应用主题到HTML
+      const html = document.documentElement;
+      if (themeMode === 'dark') {
+        html.classList.add('dark');
+        html.classList.remove('light');
+      } else {
+        html.classList.add('light');
+        html.classList.remove('dark');
+      }
+      // 保存主题到localStorage供下次使用
+      localStorage.setItem('themeMode', themeMode);
     } catch (err: any) {
       showFeedback('error', err.message || '保存失败');
     } finally {
@@ -155,10 +169,13 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
         <h3 className="text-white font-medium">个人资料</h3>
         <div>
           <label className="block text-sm text-slate-400 mb-2">邮箱</label>
-          <div className="flex items-center gap-3 bg-[#050510] border border-slate-700 rounded-xl px-4 py-3">
-            <Mail className="w-4 h-4 text-slate-500" />
-            <span className="text-slate-400 text-sm">{user?.email}</span>
-          </div>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="您的邮箱"
+            className="w-full bg-[#050510] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-all"
+          />
         </div>
         <div>
           <label className="block text-sm text-slate-400 mb-2">昵称</label>

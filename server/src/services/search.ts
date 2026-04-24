@@ -339,16 +339,18 @@ export function deduplicateResults(allResults: SearchResult[]): SearchResult[] {
   });
 }
 
-// 聚合搜索（国际搜索引擎，仅保留可用的）
+// 聚合搜索（国际搜索引擎）
 export async function searchAll(query: string): Promise<SearchResult[]> {
   const results = await Promise.allSettled([
     searchBing(query),
-    searchHackerNews(query)
+    searchHackerNews(query),
+    searchGoogle(query),
+    searchDuckDuckGo(query)
   ]);
 
   const allResults: SearchResult[] = [];
-  const sourceNames = ['Bing', 'HackerNews'];
-  
+  const sourceNames = ['Bing', 'HackerNews', 'Google', 'DuckDuckGo'];
+
   results.forEach((result, index) => {
     if (result.status === 'fulfilled') {
       allResults.push(...result.value);

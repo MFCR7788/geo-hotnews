@@ -1,11 +1,9 @@
-// 认证服务层
-// 管理 Token 存储、用户信息、登录状态
-
 const API_BASE = '/api';
 
 export interface User {
   id: string;
-  email: string;
+  email: string | null;
+  phone: string | null;
   name: string | null;
   role: 'user' | 'admin';
   isBanned?: boolean;
@@ -36,12 +34,10 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
-// Token 存储键
 const ACCESS_TOKEN_KEY = 'mfcr_access_token';
 const REFRESH_TOKEN_KEY = 'mfcr_refresh_token';
 const USER_KEY = 'mfcr_user';
 
-// Token 管理
 export const tokenStore = {
   getAccessToken: (): string | null => localStorage.getItem(ACCESS_TOKEN_KEY),
   getRefreshToken: (): string | null => localStorage.getItem(REFRESH_TOKEN_KEY),
@@ -67,7 +63,6 @@ export const tokenStore = {
   }
 };
 
-// 带认证头的请求（带自动刷新 Token）
 let isRefreshing = false;
 let refreshQueue: Array<(token: string | null) => void> = [];
 
@@ -87,10 +82,8 @@ async function requestWithAuth<T>(
     ...options
   });
 
-  // Token 过期，尝试刷新
   if (response.status === 401 && retry) {
     if (isRefreshing) {
-      // 排队等待刷新完成
       return new Promise((resolve, reject) => {
         refreshQueue.push(async (newToken) => {
           if (!newToken) {
@@ -122,20 +115,16 @@ async function requestWithAuth<T>(
           const tokens: AuthTokens = await refreshRes.json();
           tokenStore.setTokens(tokens);
           
-          // 通知所有等待的请求
           refreshQueue.forEach(cb => cb(tokens.accessToken));
           refreshQueue = [];
           isRefreshing = false;
           
-          // 重试原始请求
           return requestWithAuth<T>(endpoint, options, false);
         }
       } catch (e) {
-        // 刷新失败
       }
     }
 
-    // 刷新失败，清除 Token 并跳转登录
     refreshQueue.forEach(cb => cb(null));
     refreshQueue = [];
     isRefreshing = false;
@@ -156,13 +145,26 @@ async function requestWithAuth<T>(
   return response.json();
 }
 
-// 认证 API
 export const authApi = {
   register: async (email: string, password: string, name?: string) => {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, name })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '注册失败');
+    
+    tokenStore.setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+    tokenStore.saveUser(data.user);
+    return data;
+  },
+
+  registerWithSms: async (phone: string, code: string, name?: string) => {
+    const res = await fetch(`${API_BASE}/auth/register-sms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, code, name })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || '注册失败');
@@ -186,6 +188,31 @@ export const authApi = {
     return data;
   },
 
+  loginWithSms: async (phone: string, code: string) => {
+    const res = await fetch(`${API_BASE}/auth/login-sms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, code })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '登录失败');
+    
+    tokenStore.setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+    tokenStore.saveUser(data.user);
+    return data;
+  },
+
+  sendSmsCode: async (phone: string) => {
+    const res = await fetch(`${API_BASE}/auth/send-sms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '发送失败');
+    return data;
+  },
+
   logout: async () => {
     const refreshToken = tokenStore.getRefreshToken();
     try {
@@ -195,14 +222,13 @@ export const authApi = {
         body: JSON.stringify({ refreshToken })
       });
     } catch (e) {
-      // ignore
     }
     tokenStore.clearTokens();
   },
 
   getMe: () => requestWithAuth<User>('/auth/me'),
 
-  updateMe: (data: { name?: string }) =>
+  updateMe: (data: { name?: string; email?: string }) =>
     requestWithAuth<User>('/auth/me', {
       method: 'PUT',
       body: JSON.stringify(data)
@@ -248,7 +274,6 @@ export const authApi = {
   getCurrentUser: () => tokenStore.getUser()
 };
 
-// 管理员 API
 export const adminApi = {
   getUsers: (params?: { page?: number; limit?: number; search?: string; isBanned?: boolean }) => {
     const sp = new URLSearchParams();
@@ -287,7 +312,6 @@ export const adminApi = {
       trends: { registrations: Array<{ date: string; count: number }> };
     }>('/admin/stats'),
 
-  // 订阅管理
   getSubscriptions: (params?: { page?: number; limit?: number; search?: string; status?: string }) => {
     const sp = new URLSearchParams();
     if (params) {
@@ -313,7 +337,6 @@ export const adminApi = {
     }>(`/admin/subscriptions?${sp}`);
   },
 
-  // 订单流水
   getPayments: (params?: { page?: number; limit?: number; search?: string; status?: string }) => {
     const sp = new URLSearchParams();
     if (params) {
@@ -338,6 +361,33 @@ export const adminApi = {
       }>;
       pagination: { page: number; limit: number; total: number; totalPages: number };
     }>(`/admin/payments?${sp}`);
+  },
+
+  getKeywords: (params?: { page?: number; limit?: number; search?: string }) => {
+    const sp = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== '') sp.append(k, String(v));
+      });
+    }
+    return requestWithAuth<{
+      data: Array<{
+        id: string;
+        text: string;
+        category: string | null;
+        userCount: number;
+        hotspotCount: number;
+        createdAt: string;
+        subscribers: Array<{
+          id: string;
+          email: string | null;
+          name: string | null;
+          isActive: boolean;
+          addedAt: string;
+        }>;
+      }>;
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+    }>(`/admin/keywords?${sp}`);
   }
 };
 

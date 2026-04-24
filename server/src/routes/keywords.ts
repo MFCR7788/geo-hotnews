@@ -12,10 +12,7 @@ export function setKeywordIo(io: Server) {
 
 const router = Router();
 
-// 所有关键词路由都需要登录
-router.use(requireAuth);
-
-// ============ 全局词库 API ============
+// ============ 全局词库 API（公开访问）===========
 
 // 获取全局关键词库（所有关键词，供用户选择）
 router.get('/library', async (req: Request, res: Response) => {
@@ -46,8 +43,8 @@ router.get('/library', async (req: Request, res: Response) => {
   }
 });
 
-// 添加新关键词到全局词库
-router.post('/library', async (req: Request, res: Response) => {
+// 添加新关键词到全局词库（需要认证）
+router.post('/library', requireAuth, async (req: Request, res: Response) => {
   try {
     const { text, category } = req.body;
 
@@ -55,16 +52,14 @@ router.post('/library', async (req: Request, res: Response) => {
       return res.status(400).json({ error: '关键词文本必填' });
     }
 
-    // 检查是否已存在
     const existing = await prisma.keywordLibrary.findUnique({
       where: { text: text.trim() }
     });
 
     if (existing) {
-      return res.json(existing); // 已存在直接返回
+      return res.json(existing);
     }
 
-    // 创建新关键词
     const newKeyword = await prisma.keywordLibrary.create({
       data: {
         text: text.trim(),
@@ -74,7 +69,6 @@ router.post('/library', async (req: Request, res: Response) => {
 
     res.status(201).json(newKeyword);
 
-    // 新关键词入库后，触发一次扫描
     if (_io) {
       runHotspotCheck(_io).catch(err => console.error('Hotspot check after new keyword failed:', err));
     }
@@ -87,27 +81,21 @@ router.post('/library', async (req: Request, res: Response) => {
   }
 });
 
-// ============ 相似词搜索 API ============
+// ============ 相似词搜索 API（需要认证，排除已订阅）===========
 
-// 搜索系统词库中的相似词（输入时实时调用）
-router.get('/similar', async (req: Request, res: Response) => {
+router.get('/similar', requireAuth, async (req: Request, res: Response) => {
   try {
     const q = (req.query.q as string || '').trim();
     if (!q || q.length < 1) {
       return res.json([]);
     }
 
-    // 获取当前用户已订阅的关键词ID，用于排除
     const subscribed = await prisma.userKeyword.findMany({
       where: { userId: req.user!.userId },
       select: { keywordId: true }
     });
     const subscribedIds = new Set(subscribed.map(s => s.keywordId));
 
-    // 多策略搜索相似词：
-    // 1. 前缀匹配（权重最高）
-    // 2. 包含匹配
-    // 3. 模糊相似（PostgreSQL pg_trgm 相似度，如可用）
     const results = await prisma.keywordLibrary.findMany({
       where: {
         OR: [
@@ -122,18 +110,16 @@ router.get('/similar', async (req: Request, res: Response) => {
       take: 20
     });
 
-    // 按匹配度排序：前缀匹配 > 包含匹配，并排除已订阅的
     const ranked = results
       .filter(kw => !subscribedIds.has(kw.id))
       .map(kw => {
         const lowerText = kw.text.toLowerCase();
         const lowerQ = q.toLowerCase();
         let score = 0;
-        if (lowerText === lowerQ) score = 100;        // 完全匹配
-        else if (lowerText.startsWith(lowerQ)) score = 80;  // 前缀匹配
-        else if (lowerText.includes(lowerQ)) score = 60;    // 包含匹配
-        else score = 40;                                    // 其他
-        // 加上人气权重
+        if (lowerText === lowerQ) score = 100;
+        else if (lowerText.startsWith(lowerQ)) score = 80;
+        else if (lowerText.includes(lowerQ)) score = 60;
+        else score = 40;
         score += Math.min(kw.userCount * 2, 20);
         return { ...kw, score };
       })
@@ -147,10 +133,9 @@ router.get('/similar', async (req: Request, res: Response) => {
   }
 });
 
-// ============ 用户订阅管理 API ============
+// ============ 用户订阅管理 API（需要认证）===========
 
-// 获取当前用户已订阅的关键词
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requireAuth, async (req: Request, res: Response) => {
   try {
     const userKeywords = await prisma.userKeyword.findMany({
       where: { userId: req.user!.userId },
@@ -166,7 +151,6 @@ router.get('/', async (req: Request, res: Response) => {
       orderBy: { addedAt: 'desc' }
     });
 
-    // 格式化返回
     const result = userKeywords.map(uk => ({
       id: uk.id,
       keywordId: uk.keywordId,
@@ -185,19 +169,16 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// 订阅关键词
-router.post('/subscribe', async (req: Request, res: Response) => {
+router.post('/subscribe', requireAuth, async (req: Request, res: Response) => {
   try {
     const { keywordId, text, category } = req.body;
     let keywordLibraryId = keywordId;
 
-    // 如果没有 keywordId，则添加新关键词到词库
     if (!keywordLibraryId) {
       if (!text || typeof text !== 'string' || text.trim().length === 0) {
         return res.status(400).json({ error: '关键词文本必填' });
       }
 
-      // 查找或创建关键词库条目
       let keywordInLib = await prisma.keywordLibrary.findUnique({
         where: { text: text.trim() }
       });
@@ -214,7 +195,6 @@ router.post('/subscribe', async (req: Request, res: Response) => {
       keywordLibraryId = keywordInLib.id;
     }
 
-    // 检查是否已订阅
     const existing = await prisma.userKeyword.findUnique({
       where: {
         userId_keywordId: {
@@ -233,7 +213,6 @@ router.post('/subscribe', async (req: Request, res: Response) => {
       });
     }
 
-    // 创建订阅关系
     const userKeyword = await prisma.userKeyword.create({
       data: {
         userId: req.user!.userId,
@@ -245,7 +224,6 @@ router.post('/subscribe', async (req: Request, res: Response) => {
       }
     });
 
-    // 更新词库中的用户计数
     await prisma.keywordLibrary.update({
       where: { id: keywordLibraryId },
       data: { userCount: { increment: 1 } }
@@ -260,7 +238,6 @@ router.post('/subscribe', async (req: Request, res: Response) => {
       addedAt: userKeyword.addedAt
     });
 
-    // 订阅后触发扫描
     if (_io) {
       runHotspotCheck(_io).catch(err => console.error('Hotspot check after subscribe failed:', err));
     }
@@ -270,8 +247,7 @@ router.post('/subscribe', async (req: Request, res: Response) => {
   }
 });
 
-// 取消订阅关键词
-router.delete('/unsubscribe/:keywordId', async (req: Request, res: Response) => {
+router.delete('/unsubscribe/:keywordId', requireAuth, async (req: Request, res: Response) => {
   try {
     const keywordId = req.params.keywordId as string;
 
@@ -292,7 +268,6 @@ router.delete('/unsubscribe/:keywordId', async (req: Request, res: Response) => 
       where: { id: existing.id }
     });
 
-    // 更新词库中的用户计数
     await prisma.keywordLibrary.update({
       where: { id: keywordId },
       data: { userCount: { decrement: 1 } }
@@ -305,8 +280,7 @@ router.delete('/unsubscribe/:keywordId', async (req: Request, res: Response) => 
   }
 });
 
-// 切换关键词开关状态
-router.patch('/toggle/:id', async (req: Request, res: Response) => {
+router.patch('/toggle/:id', requireAuth, async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
 

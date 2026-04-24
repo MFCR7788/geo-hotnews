@@ -33,37 +33,43 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
       where.isReal = isReal === 'true';
     }
 
-    // 用户隔离：通过 UserKeyword 关联过滤
-    // 如果指定了 keywordId，先验证该关键词是否被当前用户订阅
-    if (keywordId) {
-      const userKeyword = await prisma.userKeyword.findUnique({
-        where: { 
-          userId_keywordId: {
-            userId: req.user!.userId,
-            keywordId: keywordId as string
+    // 用户隔离：管理员看全部，普通用户只看自己订阅的关键词热点
+    const isAdmin = req.user!.role === 'admin';
+    if (!isAdmin) {
+      // 如果指定了 keywordId，先验证该关键词是否被当前用户订阅
+      if (keywordId) {
+        const userKeyword = await prisma.userKeyword.findUnique({
+          where: { 
+            userId_keywordId: {
+              userId: req.user!.userId,
+              keywordId: keywordId as string
+            }
           }
-        }
-      });
-      if (!userKeyword) {
-        return res.status(403).json({ error: '无权访问该关键词的热点' });
-      }
-      where.keywordId = keywordId;
-    } else {
-      // 不指定 keywordId 时，只看当前用户订阅的所有关键词的热点
-      const userKeywords = await prisma.userKeyword.findMany({
-        where: { userId: req.user!.userId },
-        select: { keywordId: true }
-      });
-      const keywordIds = userKeywords.map(k => k.keywordId);
-
-      if (keywordIds.length === 0) {
-        return res.json({
-          data: [],
-          pagination: { page: pageNum, limit: limitNum, total: 0, totalPages: 0 }
         });
-      }
+        if (!userKeyword) {
+          return res.status(403).json({ error: '无权访问该关键词的热点' });
+        }
+        where.keywordId = keywordId;
+      } else {
+        // 不指定 keywordId 时，只看当前用户订阅的所有关键词的热点
+        const userKeywords = await prisma.userKeyword.findMany({
+          where: { userId: req.user!.userId },
+          select: { keywordId: true }
+        });
+        const keywordIds = userKeywords.map(k => k.keywordId);
 
-      where.keywordId = { in: keywordIds };
+        if (keywordIds.length === 0) {
+          return res.json({
+            data: [],
+            pagination: { page: pageNum, limit: limitNum, total: 0, totalPages: 0 }
+          });
+        }
+
+        where.keywordId = { in: keywordIds };
+      }
+    } else if (keywordId) {
+      // 管理员指定了 keywordId 时直接过滤
+      where.keywordId = keywordId;
     }
 
     // 时间范围筛选
@@ -153,24 +159,29 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
   }
 });
 
-// 热点统计（当前用户的）
+// 热点统计：管理员统计全部，普通用户统计自己订阅的
 router.get('/stats', requireAuth, async (req: Request, res: Response) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 当前用户订阅的关键词
-    const userKeywords = await prisma.userKeyword.findMany({
-      where: { userId: req.user!.userId },
-      select: { keywordId: true }
-    });
-    const keywordIds = userKeywords.map(k => k.keywordId);
+    const isAdmin = req.user!.role === 'admin';
+    let baseWhere: any = {};
 
-    if (keywordIds.length === 0) {
-      return res.json({ total: 0, today: 0, urgent: 0, bySource: {} });
+    if (!isAdmin) {
+      // 当前用户订阅的关键词
+      const userKeywords = await prisma.userKeyword.findMany({
+        where: { userId: req.user!.userId },
+        select: { keywordId: true }
+      });
+      const keywordIds = userKeywords.map(k => k.keywordId);
+
+      if (keywordIds.length === 0) {
+        return res.json({ total: 0, today: 0, urgent: 0, bySource: {} });
+      }
+
+      baseWhere = { keywordId: { in: keywordIds } };
     }
-
-    const baseWhere = { keywordId: { in: keywordIds } };
 
     const [
       totalHotspots,
@@ -203,7 +214,7 @@ router.get('/stats', requireAuth, async (req: Request, res: Response) => {
   }
 });
 
-// 获取单个热点
+// 获取单个热点：管理员可查看任意热点
 router.get('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
     const hotspot = await prisma.hotspot.findUnique({
@@ -219,8 +230,9 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Hotspot not found' });
     }
 
-    // 验证是否属于当前用户订阅的关键词
-    if (hotspot.keywordId) {
+    // 非管理员需验证是否属于当前用户订阅的关键词
+    const isAdmin = req.user!.role === 'admin';
+    if (!isAdmin && hotspot.keywordId) {
       const userKeyword = await prisma.userKeyword.findUnique({
         where: { 
           userId_keywordId: {

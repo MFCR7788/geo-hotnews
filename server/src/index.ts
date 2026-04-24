@@ -16,6 +16,7 @@ import subscriptionRouter from './routes/subscription.js';
 import paymentsRouter from './routes/payments.js';
 import uploadRouter from './routes/upload.js';
 import { apiLimiter, loginLimiter, registerLimiter } from './middleware/rateLimit.js';
+import { requireAuth } from './middleware/auth.js';
 import { runHotspotCheck } from './jobs/hotspotChecker.js';
 import { resetUsageQuotas, checkExpiredSubscriptions, cleanupExpiredOrders } from './jobs/subscriptionJobs.js';
 import { setKeywordIo } from './routes/keywords.js';
@@ -72,7 +73,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Manual trigger for hotspot check（需要登录才能触发）
-app.post('/api/check-hotspots', async (req, res) => {
+app.post('/api/check-hotspots', requireAuth, async (req, res) => {
   try {
     await runHotspotCheck(io);
     res.json({ message: 'Hotspot check completed' });
@@ -153,7 +154,7 @@ const PORT = process.env.PORT || 3001;
 
 httpServer.listen(PORT, () => {
   console.log(`
-  🔥 MFCR-HotNews 服务启动成功!
+  🔥 GEO星擎 服务启动成功!
   📡 Server running on http://localhost:${PORT}
   🔌 WebSocket ready
   🔒 用户认证系统已启用

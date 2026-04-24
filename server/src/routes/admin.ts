@@ -559,4 +559,73 @@ router.post('/subscriptions/:id/cancel', async (req: Request, res: Response): Pr
   }
 });
 
+/**
+ * GET /api/admin/keywords
+ * 获取所有监控词列表（含订阅用户信息）
+ */
+router.get('/keywords', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const page = parseInt((req.query.page as string) || '1');
+    const limit = parseInt((req.query.limit as string) || '20');
+    const search = (req.query.search as string) || undefined;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (search) {
+      where.text = { contains: search };
+    }
+
+    const [keywords, total] = await Promise.all([
+      prisma.keywordLibrary.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          _count: {
+            select: { userKeywords: true, hotspots: true }
+          },
+          userKeywords: {
+            take: 5,
+            orderBy: { addedAt: 'desc' },
+            include: {
+              user: { select: { id: true, email: true, name: true } }
+            }
+          }
+        }
+      }),
+      prisma.keywordLibrary.count({ where })
+    ]);
+
+    const data = keywords.map(k => ({
+      id: k.id,
+      text: k.text,
+      category: k.category,
+      userCount: k._count.userKeywords,
+      hotspotCount: k._count.hotspots,
+      createdAt: k.createdAt.toISOString(),
+      subscribers: k.userKeywords.map(uk => ({
+        id: uk.user.id,
+        email: uk.user.email,
+        name: uk.user.name,
+        isActive: uk.isActive,
+        addedAt: uk.addedAt.toISOString()
+      }))
+    }));
+
+    res.json({
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Admin get keywords error:', error);
+    res.status(500).json({ error: '获取监控词列表失败' });
+  }
+});
+
 export default router;
