@@ -69,6 +69,7 @@ export interface Notification {
   content: string;
   isRead: boolean;
   hotspotId: string | null;
+  hotspotUrl: string | null;
   createdAt: string;
 }
 

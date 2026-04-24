@@ -30,7 +30,7 @@ interface OpenRouterResponse {
   };
 }
 
-async function callOpenRouter(
+async function callOpenRouterRaw(
   messages: OpenRouterMessage[],
   options: { temperature?: number; maxTokens?: number; model?: string } = {}
 ): Promise<string> {
@@ -63,6 +63,41 @@ async function callOpenRouter(
   const content = response.data.choices?.[0]?.message?.content;
   if (!content) throw new Error('OpenRouter returned empty content');
   return content;
+}
+
+/**
+ * 带指数退避重试的 OpenRouter 调用
+ */
+async function callOpenRouter(
+  messages: OpenRouterMessage[],
+  options: { temperature?: number; maxTokens?: number; model?: string } = {},
+  retries = 3
+): Promise<string> {
+  let lastError: Error | undefined;
+
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await callOpenRouterRaw(messages, options);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const isRetryable = lastError.message.includes('timeout') ||
+        lastError.message.includes('ECONNRESET') ||
+        lastError.message.includes('ETIMEDOUT') ||
+        lastError.message.includes('429') ||
+        lastError.message.includes('rate limit') ||
+        lastError.message.includes('temporarily unavailable');
+
+      if (!isRetryable || attempt === retries - 1) {
+        throw lastError;
+      }
+
+      const delay = Math.min(1000 * Math.pow(2, attempt), 8000); // 1s, 2s, 4s
+      console.log(`OpenRouter call failed (attempt ${attempt + 1}/${retries}), retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError || new Error('OpenRouter call failed after retries');
 }
 
 // ========== Query Expansion（查询扩展） ==========

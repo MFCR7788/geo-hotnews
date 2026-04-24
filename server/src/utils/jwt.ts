@@ -20,10 +20,21 @@ export interface AuthTokens {
 }
 
 /**
+ * 获取 JWT Secret（强制环境变量，无默认值）
+ */
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is required. Please set it in your .env file.');
+  }
+  return secret;
+}
+
+/**
  * 生成 Access Token
  */
 export function generateAccessToken(payload: TokenPayload): string {
-  const secret = process.env.JWT_SECRET || 'mfcr-hotnews-jwt-secret-change-in-production';
+  const secret = getJwtSecret();
   return jwt.sign(
     { ...payload, jti: crypto.randomUUID() },
     secret, 
@@ -35,7 +46,7 @@ export function generateAccessToken(payload: TokenPayload): string {
  * 生成 Refresh Token
  */
 export function generateRefreshToken(payload: TokenPayload): string {
-  const secret = process.env.JWT_SECRET || 'mfcr-hotnews-jwt-secret-change-in-production';
+  const secret = getJwtSecret();
   return jwt.sign(
     { ...payload, jti: crypto.randomUUID() },
     secret, 
@@ -48,7 +59,7 @@ export function generateRefreshToken(payload: TokenPayload): string {
  */
 export function verifyToken(token: string): TokenPayload | null {
   try {
-    const secret = process.env.JWT_SECRET || 'mfcr-hotnews-jwt-secret-change-in-production';
+    const secret = getJwtSecret();
     const decoded = jwt.verify(token, secret) as TokenPayload;
     return decoded;
   } catch {

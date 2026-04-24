@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, User, Zap, AlertCircle, CheckCircle } from 'lucide-react';
+import { Zap, AlertCircle, CheckCircle, Phone, Clock, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 
 interface RegisterPageProps {
@@ -8,30 +8,67 @@ interface RegisterPageProps {
 }
 
 export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
-  const { register } = useAuth();
-  const [form, setForm] = useState({ email: '', password: '', confirmPassword: '', name: '' });
-  const [showPassword, setShowPassword] = useState(false);
+  const { registerWithSms } = useAuth();
+  const [phone, setPhone] = useState('');
+  const [code, setCode] = useState('');
+  const [name, setName] = useState('');
+  const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [smsSuccess, setSmsSuccess] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const validate = () => {
-    if (!form.email || !form.password) return '邮箱和密码必填';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return '邮箱格式不正确';
-    if (form.password.length < 6) return '密码至少6位';
-    if (form.password !== form.confirmPassword) return '两次密码不一致';
-    return '';
+  const handleSendCode = async () => {
+    if (!phone || phone.length !== 11) {
+      setError('请输入正确的手机号');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setSmsSuccess('');
+    try {
+      const res = await fetch('/api/auth/send-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '发送失败');
+      
+      setSmsSuccess('验证码已发送，请注意查收');
+      setTimeout(() => setSmsSuccess(''), 3000);
+      
+      setCountdown(60);
+      const timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err: any) {
+      setError(err.message || '发送失败');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    const err = validate();
-    if (err) { setError(err); return; }
-
+    if (!phone || phone.length !== 11) {
+      setError('请输入正确的手机号');
+      return;
+    }
+    if (!code || code.length !== 6) {
+      setError('请输入6位验证码');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
-      await register(form.email, form.password, form.name);
+      await registerWithSms(phone, code, name);
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || '注册失败');
@@ -54,12 +91,11 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
         transition={{ duration: 0.4 }}
         className="relative w-full max-w-md"
       >
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
-            <img src="/logo.png" alt="MFCR" className="w-12 h-12 rounded-xl object-contain" />
+            <img src="/logo.png" alt="GEO星擎" className="w-12 h-12 rounded-xl object-contain" />
             <div className="text-left">
-              <h1 className="text-xl font-bold text-white">MFCR-HotNews</h1>
+              <h1 className="text-xl font-bold text-white">GEO星擎</h1>
               <p className="text-xs text-slate-500">热点监控系统</p>
             </div>
           </div>
@@ -87,16 +123,15 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
               </button>
             </motion.div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* 昵称 */}
+            <form onSubmit={handleRegister} className="space-y-4">
               <div>
                 <label className="block text-sm text-slate-400 mb-2">昵称（选填）</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <input
                     type="text"
-                    value={form.name}
-                    onChange={e => setForm({ ...form, name: e.target.value })}
+                    value={name}
+                    onChange={e => setName(e.target.value)}
                     placeholder="您的昵称"
                     className={inputClass}
                     autoComplete="name"
@@ -104,62 +139,62 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
                 </div>
               </div>
 
-              {/* 邮箱 */}
               <div>
-                <label className="block text-sm text-slate-400 mb-2">邮箱地址</label>
+                <label className="block text-sm text-slate-400 mb-2">手机号码</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <input
-                    type="text"
-                    value={form.email}
-                    onChange={e => setForm({ ...form, email: e.target.value })}
-                    placeholder="your@email.com"
+                    type="tel"
+                    value={phone}
+                    onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                    placeholder="请输入手机号"
                     className={inputClass}
-                    autoComplete="email"
+                    maxLength={11}
                   />
                 </div>
               </div>
 
-              {/* 密码 */}
               <div>
-                <label className="block text-sm text-slate-400 mb-2">密码（至少6位）</label>
+                <label className="block text-sm text-slate-400 mb-2">验证码</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={form.password}
-                    onChange={e => setForm({ ...form, password: e.target.value })}
-                    placeholder="设置密码"
-                    className={inputClass.replace('pr-4', 'pr-12')}
-                    autoComplete="new-password"
+                    type="text"
+                    value={code}
+                    onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="请输入验证码"
+                    className={inputClass.replace('pr-4', 'pr-36')}
+                    maxLength={6}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                    onClick={handleSendCode}
+                    disabled={countdown > 0 || loading}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 text-white text-xs px-4 py-2 rounded-lg transition-all flex items-center gap-1"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {countdown > 0 ? (
+                      <>
+                        <Clock className="w-3 h-3" />
+                        {countdown}s
+                      </>
+                    ) : (
+                      '获取验证码'
+                    )}
                   </button>
                 </div>
               </div>
 
-              {/* 确认密码 */}
-              <div>
-                <label className="block text-sm text-slate-400 mb-2">确认密码</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={form.confirmPassword}
-                    onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
-                    placeholder="再次输入密码"
-                    className={inputClass}
-                    autoComplete="new-password"
-                  />
-                </div>
-              </div>
+              {smsSuccess && (
+                <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3"
+                >
+                  <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  <span className="text-emerald-400 text-sm">{smsSuccess}</span>
+                </motion.div>
+              )}
 
-              {/* 错误提示 */}
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -5 }}
@@ -171,7 +206,6 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
                 </motion.div>
               )}
 
-              {/* 注册按钮 */}
               <button
                 type="submit"
                 disabled={loading}
@@ -189,16 +223,17 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
             </form>
           )}
 
-          {/* 切换登录 */}
-          <div className="mt-6 text-center text-sm text-slate-500">
-            已有账户？
-            <button
-              onClick={onSwitchToLogin}
-              className="text-blue-400 hover:text-blue-300 transition-colors ml-1"
-            >
-              立即登录
-            </button>
-          </div>
+          {!success && (
+            <div className="mt-6 text-center text-sm text-slate-500">
+              已有账户？
+              <button
+                onClick={onSwitchToLogin}
+                className="text-blue-400 hover:text-blue-300 transition-colors ml-1"
+              >
+                立即登录
+              </button>
+            </div>
+          )}
         </div>
       </motion.div>
     </div>

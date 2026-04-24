@@ -178,7 +178,7 @@ export async function searchBilibili(query: string): Promise<SearchResult[]> {
     // 生成 buvid3 cookie 以避免 412 错误
     const buvid3 = `${crypto.randomUUID()}infoc`;
 
-    const response = await axios.get<BilibiliSearchResponse>(
+    const response = await noProxyAxios.get<BilibiliSearchResponse>(
       'https://api.bilibili.com/x/web-interface/search/type',
       {
         params: {
@@ -347,11 +347,13 @@ export async function searchWeibo(query: string): Promise<SearchResult[]> {
 
   try {
     // 使用微博热搜公开 API（无需登录）
+    // 注意：该接口可能因反爬策略返回 403，已添加降级处理
     const response = await noProxyAxios.get('https://weibo.com/ajax/side/hotSearch', {
       headers: {
         'User-Agent': getRandomUserAgent(),
         'Accept': 'application/json',
-        'Referer': 'https://weibo.com/'
+        'Referer': 'https://weibo.com/',
+        'Cookie': 'SUB=_2AkMVWDzQf8NxqwJRmP8Sz2jna4V1yAvEieKjBMfJRMxHRl-yj9jqkWhbtRB6OZgg2RYvQ5bJ5oJ7iJ0D5LgyMDudGpxA;'
       },
       timeout: 15000
     });

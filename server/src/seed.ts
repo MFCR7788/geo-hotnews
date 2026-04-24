@@ -135,7 +135,39 @@ async function main() {
   }
   console.log(`${imported} hotspots imported, ${skipped} skipped (duplicates)`);
 
-  // 4. Create some test notifications
+  // 4. Load plans from backup
+  const plansBackup = JSON.parse(
+    readFileSync(join(__dirname, '../prisma/plans_backup.json'), 'utf-8')
+  );
+
+  for (const plan of plansBackup) {
+    await prisma.plan.upsert({
+      where: { planId: plan.planId },
+      update: {
+        name: plan.name,
+        description: plan.description,
+        priceMonthly: plan.priceMonthly,
+        priceYearly: plan.priceYearly,
+        limits: JSON.stringify(plan.limits),
+        isActive: plan.isActive,
+        sortOrder: plan.sortOrder,
+      },
+      create: {
+        planId: plan.planId,
+        name: plan.name,
+        description: plan.description,
+        priceMonthly: plan.priceMonthly,
+        priceYearly: plan.priceYearly,
+        limits: JSON.stringify(plan.limits),
+        isActive: plan.isActive,
+        sortOrder: plan.sortOrder,
+      },
+    });
+    console.log('  Plan:', plan.name);
+  }
+  console.log(`${plansBackup.length} plans restored`);
+
+  // 5. Create some test notifications
   const hotspots = await prisma.hotspot.findMany({ take: 3 });
   for (const hs of hotspots) {
     await prisma.notification.create({

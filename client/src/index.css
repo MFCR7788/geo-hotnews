@@ -19,6 +19,25 @@
   --accent-red: #ef4444;
 }
 
+/* Light Theme */
+:root.light {
+  --bg-base: #ffffff;
+  --bg-surface: #f8fafc;
+  --bg-elevated: #f1f5f9;
+  --bg-hover: #e2e8f0;
+  --border-subtle: rgba(59, 130, 246, 0.1);
+  --border-default: rgba(59, 130, 246, 0.2);
+  --border-active: rgba(59, 130, 246, 0.4);
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+}
+
+body.light {
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+
 /* ===== Animations ===== */
 @theme inline {
   --animate-spotlight: spotlight 2s ease 0.75s 1 forwards;

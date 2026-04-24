@@ -40,7 +40,7 @@ export default function ForgotPasswordPage({ onBack }: ForgotPasswordPageProps) 
         className="relative w-full max-w-md"
       >
         <div className="text-center mb-8">
-          <img src="/logo.png" alt="MFCR" className="w-12 h-12 rounded-xl object-contain mx-auto mb-4" />
+          <img src="/logo.png" alt="GEO星擎" className="w-12 h-12 rounded-xl object-contain mx-auto mb-4" />
           <h1 className="text-xl font-bold text-white">找回密码</h1>
           <p className="text-slate-400 text-sm mt-1">输入注册邮箱，我们发送重置链接</p>
         </div>

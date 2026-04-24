@@ -116,7 +116,7 @@ router.post('/create', requireAuth, async (req, res) => {
       const xorPayResult = await createXorPayOrder({
         orderNo,
         amount,
-        title: `MFCR-HotNews ${plan.name} ${billingCycle === 'yearly' ? '年付' : '月付'}`,
+        title: `GEO星擎 ${plan.name} ${billingCycle === 'yearly' ? '年付' : '月付'}`,
         payChannel,
         returnUrl: `${process.env.CLIENT_URL}/subscription?payment=success`
       });

@@ -48,13 +48,14 @@ interface AdminPayment {
   createdAt: string;
 }
 
-type TabType = 'users' | 'subscriptions' | 'payments';
+type TabType = 'users' | 'keywords' | 'subscriptions' | 'payments';
 
 export default function AdminPage({ onClose }: { onClose: () => void }) {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [subscriptions, setSubscriptions] = useState<AdminSubscription[]>([]);
   const [payments, setPayments] = useState<AdminPayment[]>([]);
+  const [keywords, setKeywords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabType>('users');
   const [search, setSearch] = useState('');
@@ -132,11 +133,26 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const fetchKeywords = async () => {
+    setLoading(true);
+    try {
+      const data = await adminApi.getKeywords({ page, limit: 10, search: search || undefined });
+      setKeywords(data.data);
+      setTotalPages(data.pagination.totalPages);
+    } catch (err: any) {
+      showFeedback('error', err.message || '获取监控词列表失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => { fetchStats(); }, []);
 
   useEffect(() => {
     if (tab === 'users') {
       fetchUsers();
+    } else if (tab === 'keywords') {
+      fetchKeywords();
     } else if (tab === 'subscriptions') {
       fetchSubscriptions();
     } else if (tab === 'payments') {
@@ -258,7 +274,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
             </div>
             <div>
               <h2 className="text-white font-semibold">管理后台</h2>
-              <p className="text-slate-500 text-xs">MFCR-HotNews 系统管理</p>
+              <p className="text-slate-500 text-xs">GEO星擎 系统管理</p>
             </div>
           </div>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
@@ -270,6 +286,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
         <div className="flex gap-1 px-6 pt-4 border-b border-slate-800">
           {[
             { id: 'users', label: '用户管理', icon: <Users className="w-4 h-4" /> },
+            { id: 'keywords', label: '监控词管理', icon: <Zap className="w-4 h-4" /> },
             { id: 'subscriptions', label: '订阅管理', icon: <Crown className="w-4 h-4" /> },
             { id: 'payments', label: '订单流水', icon: <CreditCard className="w-4 h-4" /> },
           ].map((t) => (
@@ -366,6 +383,66 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
             </div>
           )}
 
+          {/* 监控词统计 */}
+          {tab === 'keywords' && (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              {[
+                { label: '监控词总数', value: keywords.length > 0 ? keywords[0].__total || stats?.content.keywords || 0 : stats?.content.keywords || 0, icon: <Zap className="w-5 h-5 text-blue-400" />, sub: '个关键词' },
+                { label: '总订阅数', value: keywords.reduce((sum, k) => sum + k.userCount, 0), icon: <Users className="w-5 h-5 text-cyan-400" />, sub: '次订阅' },
+                { label: '热点关联', value: keywords.reduce((sum, k) => sum + k.hotspotCount, 0), icon: <TrendingUp className="w-5 h-5 text-emerald-400" />, sub: '条热点' },
+              ].map((stat, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="bg-[#050510] border border-slate-800 rounded-xl p-4"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-slate-500 text-xs">{stat.label}</span>
+                    {stat.icon}
+                  </div>
+                  <p className="text-2xl font-bold text-white">{stat.value}</p>
+                  <p className="text-slate-600 text-xs mt-1">{stat.sub}</p>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          {/* 扫描操作栏 */}
+          {tab === 'keywords' && (
+            <div className="flex items-center justify-between bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-white font-medium">热点扫描</p>
+                  <p className="text-slate-500 text-xs">
+                    {lastScanTime ? `上次扫描: ${lastScanTime}` : '自动每30分钟扫描'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleStartScan}
+                disabled={scanning}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm font-medium flex items-center gap-2 transition-all disabled:opacity-50"
+              >
+                {scanning ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    扫描中...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4" />
+                    扫描监控词
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
           {/* 订阅统计 */}
           {tab === 'subscriptions' && (
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -396,6 +473,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
           <div className="flex items-center justify-between">
             <h3 className="text-white font-medium flex items-center gap-2">
               {tab === 'users' && <><BarChart3 className="w-4 h-4" /> 用户列表</>}
+              {tab === 'keywords' && <><Zap className="w-4 h-4" /> 监控词列表</>}
               {tab === 'subscriptions' && <><Crown className="w-4 h-4" /> 订阅列表</>}
               {tab === 'payments' && <><CreditCard className="w-4 h-4" /> 订单流水</>}
             </h3>
@@ -405,11 +483,72 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
                 type="text"
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }}
-                placeholder={tab === 'users' ? "搜索邮箱/昵称..." : "搜索邮箱..."}
+                placeholder={tab === 'users' ? "搜索邮箱/昵称..." : tab === 'keywords' ? "搜索监控词..." : "搜索邮箱..."}
                 className="bg-[#050510] border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-blue-500 w-64"
               />
             </div>
           </div>
+
+          {/* 监控词列表 Tab */}
+          {tab === 'keywords' && (
+            <div className="bg-[#050510] border border-slate-800 rounded-xl overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-800">
+                    <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">监控词</th>
+                    <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">分类</th>
+                    <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">订阅数</th>
+                    <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">热点数</th>
+                    <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">创建时间</th>
+                    <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">订阅用户</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-slate-500 text-sm">加载中...</td>
+                    </tr>
+                  ) : keywords.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-slate-500 text-sm">暂无监控词</td>
+                    </tr>
+                  ) : keywords.map((k) => (
+                    <tr key={k.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
+                      <td className="px-4 py-3">
+                        <span className="text-white text-sm font-medium">{k.text}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-slate-400 text-xs">{k.category || '—'}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-cyan-400 text-sm">{k.userCount}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-emerald-400 text-sm">{k.hotspotCount}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-slate-400 text-xs">{formatDate(k.createdAt)}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {k.subscribers?.slice(0, 3).map((s: any) => (
+                            <span key={s.id} className={`inline-flex px-2 py-0.5 rounded-full text-xs ${s.isActive ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-500/20 text-slate-400'}`}>
+                              {s.name || s.email?.split('@')[0] || '用户'}
+                            </span>
+                          ))}
+                          {(k.subscribers?.length || 0) > 3 && (
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs bg-slate-700/50 text-slate-400">
+                              +{k.subscribers.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {/* 用户列表 Tab */}
           {tab === 'users' && (

@@ -32,8 +32,23 @@ router.get('/', async (req: Request, res: Response) => {
       prisma.notification.count({ where: { userId: req.user!.userId, isRead: false } })
     ]);
 
+    // 批量查询关联热点的 URL
+    const hotspotIds = notifications.map(n => n.hotspotId).filter((id): id is string => !!id);
+    const hotspots = hotspotIds.length > 0
+      ? await prisma.hotspot.findMany({
+          where: { id: { in: hotspotIds } },
+          select: { id: true, url: true }
+        })
+      : [];
+    const urlMap = new Map(hotspots.map(h => [h.id, h.url]));
+
+    const data = notifications.map(n => ({
+      ...n,
+      hotspotUrl: n.hotspotId ? (urlMap.get(n.hotspotId) || null) : null
+    }));
+
     res.json({
-      data: notifications,
+      data,
       unreadCount,
       pagination: {
         page: pageNum,
