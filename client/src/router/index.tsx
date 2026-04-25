@@ -34,6 +34,13 @@ import SettingsSubscriptionView from '../pages/geo/settings/SettingsSubscription
 import SettingsApiView from '../pages/geo/settings/SettingsApiView'
 import GuideView from '../pages/geo/guide/GuideView'
 
+// 原始独立页面（modal/page 组件）
+import AdminPage from '../pages/AdminPage'
+import PricingPage from '../pages/PricingPage'
+import SubscriptionPage from '../pages/SubscriptionPage'
+import BillingPage from '../pages/BillingPage'
+import SettingsPage from '../pages/SettingsPage'
+
 // 守卫组件
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isLoggedIn, isLoading } = useAuth()
@@ -59,17 +66,14 @@ export const router = createBrowserRouter([
   { path: '/register', element: <RegisterPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
 
-  // 热点雷达（原有功能）
-  { path: '/dashboard', element: <RequireAuth><HotspotRadar /></RequireAuth> },
-  { path: '/keywords', element: <RequireAuth><HotspotRadar /></RequireAuth> },
-  { path: '/search', element: <RequireAuth><HotspotRadar /></RequireAuth> },
-
-  // GEO 功能（带 Layout）
+  // GEO 功能 + 热点雷达（带 Layout）
   {
     path: '/',
     element: <RequireAuth><AppLayout /></RequireAuth>,
     children: [
-      { index: true, element: <Navigate to="/geo/dashboard" replace /> },
+      { index: true, element: <Navigate to="/guide" replace /> },
+      // 热点雷达（原有核心功能）
+      { path: 'hotspot-radar', element: <HotspotRadar /> },
       { path: 'guide', element: <GuideView /> },
       { path: 'geo/dashboard', element: <GeoDashboard /> },
       { path: 'geo/geo-check', element: <GeoCheckView /> },
@@ -95,6 +99,12 @@ export const router = createBrowserRouter([
       { path: 'geo/settings/knowledge', element: <SettingsKnowledgeView /> },
       { path: 'geo/settings/subscription', element: <SettingsSubscriptionView /> },
       { path: 'geo/settings/api', element: <SettingsApiView /> },
+      // 原始独立功能页面
+      { path: 'admin', element: <AdminPage onClose={() => window.history.back()} /> },
+      { path: 'pricing', element: <PricingPage onBack={() => window.history.back()} /> },
+      { path: 'subscription', element: <SubscriptionPage onBack={() => window.history.back()} /> },
+      { path: 'billing', element: <BillingPage onBack={() => window.history.back()} /> },
+      { path: 'settings', element: <SettingsPage onClose={() => window.history.back()} /> },
     ],
   },
 

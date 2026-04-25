@@ -60,55 +60,55 @@ export default function ContentDetailView() {
     } catch {}
   }
 
-  if (loading) return <div className="p-6 text-center text-gray-400">加载中...</div>
-  if (!content) return <div className="p-6 text-center text-gray-400">内容不存在</div>
+  if (loading) return <div className="text-center text-gray-500">加载中...</div>
+  if (!content) return <div className="text-center text-gray-500">内容不存在</div>
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       <PageHeader
         title="内容详情"
         onBack={() => navigate('/geo/content/list')}
         action={
           editing ? (
             <>
-              <button onClick={() => setEditing(false)} className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">取消</button>
-              <button onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm text-white bg-blue-500 rounded-lg hover:bg-blue-600 disabled:opacity-60">
+              <button onClick={() => setEditing(false)} className="px-4 py-2 text-sm text-gray-400 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors">取消</button>
+              <button onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm text-white bg-blue-500 rounded-lg hover:bg-blue-600 disabled:opacity-60 transition-colors">
                 {saving ? '保存中...' : '保存'}
               </button>
             </>
           ) : (
             <>
-              <button onClick={() => setEditing(true)} className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">编辑</button>
+              <button onClick={() => setEditing(true)} className="px-4 py-2 text-sm text-gray-400 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors">编辑</button>
               {content.status === 'draft' && (
-                <button onClick={handlePublish} className="px-4 py-2 text-sm text-white bg-green-500 rounded-lg hover:bg-green-600">发布</button>
+                <button onClick={handlePublish} className="px-4 py-2 text-sm text-white bg-emerald-500 rounded-lg hover:bg-emerald-600 transition-colors">发布</button>
               )}
               {content.status === 'published' && (
-                <button onClick={handleArchive} className="px-4 py-2 text-sm text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100">归档</button>
+                <button onClick={handleArchive} className="px-4 py-2 text-sm text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-lg hover:bg-orange-500/20 transition-colors">归档</button>
               )}
             </>
           )
         }
       />
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
         {/* Meta info */}
-        <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
-          <span className="text-sm text-gray-500">{PLATFORM_MAP[content.platform || ''] || content.platform}</span>
+        <div className="flex items-center gap-4 mb-6 pb-4 border-b border-white/10">
+          <span className="text-sm text-gray-400">{PLATFORM_MAP[content.platform || ''] || content.platform}</span>
           <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-            content.status === 'published' ? 'bg-green-100 text-green-700' :
-            content.status === 'archived' ? 'bg-orange-100 text-orange-700' :
-            'bg-gray-100 text-gray-600'
+            content.status === 'published' ? 'bg-emerald-500/15 text-emerald-400' :
+            content.status === 'archived' ? 'bg-orange-500/15 text-orange-400' :
+            'bg-white/10 text-gray-400'
           }`}>
             {content.status === 'published' ? '已发布' : content.status === 'archived' ? '已归档' : '草稿'}
           </span>
           {content.complianceScore != null && (
             <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-              content.complianceScore >= 60 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+              content.complianceScore >= 60 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'
             }`}>
               合规 {content.complianceScore}
             </span>
           )}
-          <span className="text-sm text-gray-400">
+          <span className="text-sm text-gray-500">
             {new Date(content.createdAt).toLocaleString('zh-CN')}
           </span>
         </div>
@@ -116,27 +116,27 @@ export default function ContentDetailView() {
         {editing ? (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">标题</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">标题</label>
               <input
                 value={editForm.title}
                 onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-colors"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">正文</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">正文</label>
               <textarea
                 value={editForm.body}
                 onChange={e => setEditForm(f => ({ ...f, body: e.target.value }))}
                 rows={16}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono text-sm"
+                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none font-mono text-sm transition-colors"
               />
             </div>
           </div>
         ) : (
           <div>
-            <h1 className="text-xl font-semibold text-gray-900 mb-4">{content.title}</h1>
-            <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
+            <h1 className="text-xl font-semibold text-white mb-4">{content.title}</h1>
+            <div className="prose prose-sm max-w-none text-gray-300 whitespace-pre-wrap">
               {content.body || content.formattedBody}
             </div>
           </div>

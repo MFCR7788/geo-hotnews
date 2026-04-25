@@ -10,10 +10,10 @@ import PageHeader from '../../../components/ui/PageHeader'
 import StatCard from '../../../components/ui/StatCard'
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  uploading: { label: '上传中', color: 'bg-yellow-100 text-yellow-700' },
-  ready: { label: '已完成', color: 'bg-blue-100 text-blue-700' },
-  published: { label: '已发布', color: 'bg-green-100 text-green-700' },
-  failed: { label: '失败', color: 'bg-red-100 text-red-700' },
+  uploading: { label: '上传中', color: 'bg-amber-500/15 text-amber-400' },
+  ready: { label: '已完成', color: 'bg-blue-500/15 text-blue-400' },
+  published: { label: '已发布', color: 'bg-emerald-500/15 text-emerald-400' },
+  failed: { label: '失败', color: 'bg-red-500/15 text-red-400' },
 }
 
 const PLATFORM_MAP: Record<string, string> = {
@@ -60,7 +60,7 @@ export default function VideoCenterView() {
   } : { total: 0, completed: 0, published: 0, generating: 0 }
 
   return (
-    <div className="p-6">
+    <div>
       <PageHeader
         title="短视频中心"
         subtitle="AI视频创作与多平台发布管理"
@@ -79,40 +79,40 @@ export default function VideoCenterView() {
           <select
             value={filter.status}
             onChange={e => setFilter(f => ({ ...f, status: e.target.value }))}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-colors"
           >
-            <option value="">全部状态</option>
-            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_MAP[s]?.label || s}</option>)}
+            <option value="" className="bg-[#0a0a1a]">全部状态</option>
+            {STATUS_OPTIONS.map(s => <option key={s} value={s} className="bg-[#0a0a1a]">{STATUS_MAP[s]?.label || s}</option>)}
           </select>
           <select
             value={filter.platform}
             onChange={e => setFilter(f => ({ ...f, platform: e.target.value }))}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-colors"
           >
-            <option value="">全部平台</option>
-            {PLATFORM_OPTIONS.map(p => <option key={p} value={p}>{PLATFORM_MAP[p] || p}</option>)}
+            <option value="" className="bg-[#0a0a1a]">全部平台</option>
+            {PLATFORM_OPTIONS.map(p => <option key={p} value={p} className="bg-[#0a0a1a]">{PLATFORM_MAP[p] || p}</option>)}
           </select>
         </div>
         <button
           onClick={() => navigate('/geo/video/create')}
-          className="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors"
+          className="px-4 py-2 bg-blue-500/20 text-blue-400 text-sm rounded-lg border border-blue-500/30 hover:bg-blue-500/30 hover:border-blue-500/50 transition-all"
         >
           + 创建视频
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
         {loading ? (
-          <div className="text-center py-16 text-gray-400">加载中...</div>
+          <div className="text-center py-16 text-gray-500">加载中...</div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
+          <div className="text-center py-16 text-gray-500">
             <p className="mb-2">暂无视频</p>
-            <button onClick={() => navigate('/geo/video/create')} className="text-blue-500 hover:underline text-sm">创建第一个视频 →</button>
+            <button onClick={() => navigate('/geo/video/create')} className="text-blue-400 hover:text-blue-300 transition-colors text-sm">创建第一个视频 →</button>
           </div>
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
+              <tr className="border-b border-white/5 bg-white/[0.02]">
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-20">缩略图</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">标题</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-24">平台</th>
@@ -121,35 +121,35 @@ export default function VideoCenterView() {
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-40">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-white/5">
               {filtered.map(video => {
-                const statusInfo = STATUS_MAP[video.status] || { label: video.status, color: 'bg-gray-100 text-gray-600' }
+                const statusInfo = STATUS_MAP[video.status] || { label: video.status, color: 'bg-white/10 text-gray-400' }
                 return (
-                  <tr key={video.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={video.id} className="hover:bg-white/5 transition-colors duration-150">
                     <td className="px-6 py-4">
                       {video.coverUrl ? (
                         <img src={video.coverUrl} alt="" className="w-12 h-12 rounded-lg object-cover" />
                       ) : (
-                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-xl">🎬</div>
+                        <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center text-xl">🎬</div>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{video.title}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{PLATFORM_MAP[video.platform] || video.platform}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-white">{video.title}</td>
+                    <td className="px-6 py-4 text-sm text-gray-400">{PLATFORM_MAP[video.platform] || video.platform}</td>
                     <td className="px-6 py-4">
                       <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${statusInfo.color}`}>
                         {statusInfo.label}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-400">{formatDate(video.createdAt)}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{formatDate(video.createdAt)}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {video.status === 'ready' && (
-                          <button onClick={() => navigate(`/geo/video/${video.id}/preview`)} className="text-sm text-blue-500 hover:underline">预览</button>
+                          <button onClick={() => navigate(`/geo/video/${video.id}/preview`)} className="text-sm text-blue-400 hover:text-blue-300 transition-colors">预览</button>
                         )}
                         {video.status === 'ready' && (
-                          <button onClick={() => navigate('/geo/video/publish')} className="text-sm text-green-600 hover:underline">发布</button>
+                          <button onClick={() => navigate('/geo/video/publish')} className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors">发布</button>
                         )}
-                        <button onClick={() => navigate(`/geo/video/${video.id}/edit`)} className="text-sm text-gray-500 hover:underline">编辑</button>
+                        <button onClick={() => navigate(`/geo/video/${video.id}/edit`)} className="text-sm text-gray-400 hover:text-gray-200 transition-colors">编辑</button>
                       </div>
                     </td>
                   </tr>
@@ -169,10 +169,10 @@ export default function VideoCenterView() {
           <button
             key={item.path}
             onClick={() => navigate(item.path)}
-            className="bg-white rounded-xl border border-gray-100 p-4 text-center hover:border-blue-200 hover:shadow-sm transition-all"
+            className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 text-center hover:bg-white/10 hover:border-white/20 transition-all duration-200"
           >
             <div className="text-2xl mb-1">{item.icon}</div>
-            <div className="text-sm text-gray-700">{item.label}</div>
+            <div className="text-sm text-gray-300">{item.label}</div>
           </button>
         ))}
       </div>

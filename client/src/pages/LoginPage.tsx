@@ -82,6 +82,8 @@ export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
     setError('');
     try {
       await loginWithSms(phone, code);
+      // 登录成功，跳转到操作说明页
+      navigate('/guide');
     } catch (err: any) {
       setError(err.message || '登录失败');
     } finally {
