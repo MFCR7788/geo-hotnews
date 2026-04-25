@@ -72,6 +72,8 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
     try {
       await registerWithSms(phone, code, name);
       setSuccess(true);
+      // 注册成功，跳转到操作说明页
+      setTimeout(() => navigate('/guide'), 800);
     } catch (err: any) {
       setError(err.message || '注册失败');
     } finally {

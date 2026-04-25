@@ -34,9 +34,9 @@ function getGeoLevel(score: number) {
 }
 
 function alertTagType(level: string) {
-  if (level === 'high') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-  if (level === 'medium') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-  return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+  if (level === 'high') return 'bg-red-500/15 text-red-400 border border-red-500/20'
+  if (level === 'medium') return 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
+  return 'bg-blue-500/15 text-blue-400 border border-blue-500/20'
 }
 
 function alertLabel(level: string) {
@@ -61,13 +61,11 @@ export default function GeoDashboard() {
   const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [loading, setLoading] = useState(true)
 
-  // 加载数据
   async function loadData() {
     try {
       const res = await dashboardApi.getHealth('30d')
       if (res) setHealthData(res)
     } catch {
-      // 后端未实现时用空数据
       setHealthData({
         overallScore: 0, geoScore: 0, contentGenerated: 0,
         contentCount: 0, publishedCount: 0, alerts: 0,
@@ -89,9 +87,7 @@ export default function GeoDashboard() {
     setLoading(false)
   }
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  useEffect(() => { loadData() }, [])
 
   // 渲染趋势图
   useEffect(() => {
@@ -109,8 +105,8 @@ export default function GeoDashboard() {
           return p.value != null ? `${p.name}: ${p.value}分` : `${p.name}: 暂无数据`
         }},
         grid: { top: 16, bottom: 28, left: 48, right: 16 },
-        xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 11, color: '#9ca3af' } },
-        yAxis: { type: 'value', min: 0, max: 100, axisLabel: { fontSize: 11, color: '#9ca3af' } },
+        xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 11, color: '#6b7280' } },
+        yAxis: { type: 'value', min: 0, max: 100, axisLabel: { fontSize: 11, color: '#6b7280' } },
         series: [{
           data: scores,
           type: 'line', smooth: true, connectNulls: true,
@@ -126,7 +122,6 @@ export default function GeoDashboard() {
         }],
       })
     } else {
-      // 空数据：生成最近30天日期
       const dates = Array.from({ length: 30 }, (_, i) => {
         const d = new Date(); d.setDate(d.getDate() - 29 + i)
         return `${d.getMonth() + 1}/${d.getDate()}`
@@ -134,8 +129,8 @@ export default function GeoDashboard() {
       trendChart.current.setOption({
         tooltip: { trigger: 'axis' },
         grid: { top: 16, bottom: 28, left: 48, right: 16 },
-        xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 11, color: '#9ca3af' } },
-        yAxis: { type: 'value', min: 0, max: 100, axisLabel: { fontSize: 11, color: '#9ca3af' } },
+        xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 11, color: '#6b7280' } },
+        yAxis: { type: 'value', min: 0, max: 100, axisLabel: { fontSize: 11, color: '#6b7280' } },
         series: [{ data: Array(30).fill(null), type: 'line', smooth: true }],
       })
     }
@@ -201,7 +196,7 @@ export default function GeoDashboard() {
       {/* 顶部统计卡片 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {loading ? loadingBars.map((_, i) => (
-          <div key={i} className="bg-white dark:bg-gray-800 rounded-xl p-5 h-24 animate-pulse" />
+          <div key={i} className="bg-white/[0.02] rounded-2xl p-5 h-24 animate-pulse" />
         )) : (
           <>
             <StatCard
@@ -231,13 +226,13 @@ export default function GeoDashboard() {
       {/* 图表区 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* 趋势图 */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="lg:col-span-2 rounded-2xl bg-white/[0.02] border border-white/5 p-5">
           <PageHeader title="GEO得分趋势" />
           <div ref={trendRef} style={{ height: 280 }} />
         </div>
 
         {/* 雷达图 */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-5">
           <PageHeader title="GEO维度雷达" />
           <div ref={radarRef} style={{ height: 280 }} />
         </div>
@@ -246,7 +241,7 @@ export default function GeoDashboard() {
       {/* 下方快捷入口+告警 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* 快捷入口 */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-5">
           <PageHeader title="快捷入口" />
           <div className="grid grid-cols-2 gap-3">
             {quickActions.map(action => (
@@ -264,20 +259,20 @@ export default function GeoDashboard() {
         </div>
 
         {/* 最新告警 */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-5">
           <PageHeader
             title="最新告警"
             action={
               <button
                 onClick={() => navigate('/geo/notifications')}
-                className="text-sm text-blue-500 hover:text-blue-600 flex items-center gap-1"
+                className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
               >
                 查看全部 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             }
           />
           {alerts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+            <div className="flex flex-col items-center justify-center py-10 text-slate-500">
               <Bell className="w-10 h-10 mb-2 opacity-40" />
               <span className="text-sm">暂无告警</span>
             </div>
@@ -285,11 +280,11 @@ export default function GeoDashboard() {
             <div className="space-y-2.5">
               {alerts.map(a => (
                 <div key={a.id} className="flex items-center gap-2.5 text-sm">
-                  <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${alertTagType(a.level)}`}>
+                  <span className={`text-xs font-medium px-1.5 py-0.5 rounded-lg ${alertTagType(a.level)}`}>
                     {alertLabel(a.level)}
                   </span>
-                  <span className="flex-1 text-gray-700 dark:text-gray-300 truncate">{a.message}</span>
-                  <span className="text-xs text-gray-400 whitespace-nowrap">{a.time}</span>
+                  <span className="flex-1 text-gray-300 truncate">{a.message}</span>
+                  <span className="text-xs text-slate-600 whitespace-nowrap">{a.time}</span>
                 </div>
               ))}
             </div>

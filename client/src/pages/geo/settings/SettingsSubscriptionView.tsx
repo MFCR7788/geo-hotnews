@@ -17,22 +17,22 @@ export default function SettingsSubscriptionView() {
       <PageHeader title="订阅管理" subtitle="查看和升级您的订阅计划" onBack={() => navigate('/geo/dashboard')} />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         {PLAN_FEATURES.map((plan, i) => (
-          <div key={plan.name} className={`bg-white rounded-xl border p-6 ${i === 1 ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-100'}`}>
-            {i === 1 && <div className="text-xs text-blue-600 font-medium mb-2">推荐</div>}
-            <div className="text-lg font-semibold text-gray-900 mb-1">{plan.name}</div>
-            <div className="text-2xl font-bold text-gray-900 mb-4">{plan.price}</div>
+          <div key={plan.name} className={`bg-white/5 backdrop-blur-sm rounded-2xl border p-6 ${i === 1 ? 'border-blue-400/50 ring-2 ring-blue-500/20' : 'border-white/10'}`}>
+            {i === 1 && <div className="text-xs text-blue-400 font-medium mb-2">推荐</div>}
+            <div className="text-lg font-semibold text-white mb-1">{plan.name}</div>
+            <div className="text-2xl font-bold text-white mb-4">{plan.price}</div>
             <ul className="space-y-2 mb-6">
               {plan.features.map(f => (
-                <li key={f} className="text-sm text-gray-600 flex items-center gap-2">
-                  <span className="text-green-500">✓</span> {f}
+                <li key={f} className="text-sm text-gray-400 flex items-center gap-2">
+                  <span className="text-emerald-400">✓</span> {f}
                 </li>
               ))}
             </ul>
             <button
-              className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
-                i === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
+              className={`w-full py-2 rounded-xl text-sm font-medium transition-colors ${
+                i === 0 ? 'bg-white/5 text-gray-500 cursor-not-allowed border border-white/10' :
                 i === 1 ? 'bg-blue-500 text-white hover:bg-blue-600' :
-                'bg-gray-800 text-white hover:bg-gray-900'
+                'bg-white/10 text-white hover:bg-white/20 border border-white/10'
               }`}
               disabled={i === 0}
             >
@@ -41,7 +41,7 @@ export default function SettingsSubscriptionView() {
           </div>
         ))}
       </div>
-      <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-500">
+      <div className="bg-white/[0.02] rounded-2xl border border-white/10 p-4 text-sm text-gray-500">
         当前方案：免费版 · 已用：GEO体检 2/5次，内容生成 5/10篇
       </div>
     </div>

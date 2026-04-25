@@ -140,41 +140,46 @@ export default function ContentGenerateView() {
           <div key={i} className="flex items-center">
             <div className={`
               flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-all
-              ${i < step ? 'bg-green-500 text-white' : i === step ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'}
+              ${i < step ? 'bg-emerald-500 text-white' : i === step ? 'bg-blue-500 text-white' : 'bg-white/10 text-slate-500'}
             `}>
               {i < step ? '✓' : i + 1}
             </div>
-            <span className={`ml-2 text-sm ${i === step ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
+            <span className={`ml-2 text-sm ${i === step ? 'text-white font-medium' : 'text-slate-500'}`}>
               {title}
             </span>
-            {i < STEP_TITLES.length - 1 && <div className="w-8 h-px bg-gray-200 mx-2" />}
+            {i < STEP_TITLES.length - 1 && <div className="w-8 h-px bg-white/10 mx-2" />}
           </div>
         ))}
       </div>
 
       {/* Step 0: 基本信息 */}
       {step === 0 && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-6">
+        <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* 品牌名 */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">品牌名</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">品牌名</label>
               <input
                 type="text"
                 value={form.brandName}
                 onChange={e => updateForm('brandName', e.target.value)}
                 placeholder="如：超人户外"
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm
+                           placeholder-slate-600
+                           focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20
+                           transition-all"
               />
             </div>
 
             {/* 行业 */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">行业</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">行业</label>
               <select
                 value={form.industry}
                 onChange={e => updateForm('industry', e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm
+                           focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20
+                           transition-all"
               >
                 <option value="">选择行业</option>
                 {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
@@ -184,7 +189,7 @@ export default function ContentGenerateView() {
 
           {/* 关键词 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">核心关键词</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">核心关键词</label>
             <TagInput
               tags={form.keywords}
               onChange={tags => updateForm('keywords', tags)}
@@ -194,7 +199,7 @@ export default function ContentGenerateView() {
 
           {/* 目标平台 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">目标平台</label>
+            <label className="block text-sm font-medium text-gray-300 mb-3">目标平台</label>
             <div className="flex flex-wrap gap-3">
               {PLATFORMS.map(p => (
                 <label key={p.value} className="flex items-center gap-2 cursor-pointer">
@@ -208,9 +213,9 @@ export default function ContentGenerateView() {
                         updateForm('platforms', form.platforms.filter(x => x !== p.value))
                       }
                     }}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                    className="w-4 h-4 rounded border-white/20 text-blue-400 bg-white/5 focus:ring-blue-500/50"
                   />
-                  <span className="text-sm text-gray-700">{p.label}</span>
+                  <span className="text-sm text-gray-300">{p.label}</span>
                 </label>
               ))}
             </div>
@@ -218,7 +223,7 @@ export default function ContentGenerateView() {
 
           {/* 内容模板 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">内容模板</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">内容模板</label>
             {/* Category filter */}
             <div className="flex flex-wrap gap-2 mb-3">
               {TEMPLATE_CATEGORIES.map(cat => (
@@ -231,10 +236,10 @@ export default function ContentGenerateView() {
                       setTemplateCategories([...templateCategories, cat])
                     }
                   }}
-                  className={`px-3 py-1 rounded-full text-xs transition-colors ${
+                  className={`px-3 py-1 rounded-full text-xs transition-all ${
                     templateCategories.includes(cat)
                       ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
                   }`}
                 >
                   {cat}
@@ -244,7 +249,9 @@ export default function ContentGenerateView() {
             <select
               value={form.templateId}
               onChange={e => updateForm('templateId', e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm
+                         focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20
+                         transition-all"
             >
               <option value="">选择内容模板</option>
               {filteredTemplates.map(t => (
@@ -254,16 +261,16 @@ export default function ContentGenerateView() {
 
             {/* Template preview */}
             {selectedTemplate && (
-              <div className="mt-3 p-4 bg-gray-50 rounded-lg">
+              <div className="mt-3 p-4 rounded-xl bg-white/[0.02] border border-white/5">
                 {selectedTemplate.description && (
-                  <div className="text-sm text-gray-700 mb-1">
+                  <div className="text-sm text-gray-300 mb-1">
                     <span className="font-medium">描述：</span>{selectedTemplate.description}
                   </div>
                 )}
-                <div className="text-xs text-gray-500 mb-1">
+                <div className="text-xs text-slate-500 mb-1">
                   <span className="font-medium">变量：</span>{selectedTemplate.variables ? JSON.parse(selectedTemplate.variables).join('、') : '无'}
                 </div>
-                <div className="text-xs text-blue-600">
+                <div className="text-xs text-blue-400">
                   <span className="font-medium">提示词：</span><span className="line-clamp-2">{selectedTemplate.prompt}</span>
                 </div>
               </div>
@@ -274,10 +281,10 @@ export default function ContentGenerateView() {
 
       {/* Step 1: 品牌信息 */}
       {step === 1 && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-6">
+        <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-6 space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">品牌卖点</label>
-            <p className="text-xs text-gray-400 mb-3">定义品牌独特价值，便于AI精准表达</p>
+            <label className="block text-sm font-medium text-gray-300 mb-2">品牌卖点</label>
+            <p className="text-xs text-slate-500 mb-3">定义品牌独特价值，便于AI精准表达</p>
             <TagInput
               tags={form.sellingPoints}
               onChange={tags => updateForm('sellingPoints', tags)}
@@ -287,8 +294,8 @@ export default function ContentGenerateView() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">竞品品牌</label>
-            <p className="text-xs text-gray-400 mb-3">AI会对比分析差异化优势</p>
+            <label className="block text-sm font-medium text-gray-300 mb-2">竞品品牌</label>
+            <p className="text-xs text-slate-500 mb-3">AI会对比分析差异化优势</p>
             <TagInput
               tags={form.competitors}
               onChange={tags => updateForm('competitors', tags)}
@@ -298,14 +305,17 @@ export default function ContentGenerateView() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">官网URL</label>
-            <p className="text-xs text-gray-400 mb-3">AI可抓取品牌信息自动补充内容</p>
+            <label className="block text-sm font-medium text-gray-300 mb-2">官网URL</label>
+            <p className="text-xs text-slate-500 mb-3">AI可抓取品牌信息自动补充内容</p>
             <input
               type="url"
               value={form.websiteUrl}
               onChange={e => updateForm('websiteUrl', e.target.value)}
               placeholder="https://www.example.com"
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm
+                         placeholder-slate-600
+                         focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20
+                         transition-all"
             />
           </div>
         </div>
@@ -313,21 +323,24 @@ export default function ContentGenerateView() {
 
       {/* Step 2: 高级设置 */}
       {step === 2 && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-6">
+        <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-6 space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">自定义提示词</label>
-            <p className="text-xs text-gray-400 mb-3">给AI的额外指令，如"重点强调面料工艺"</p>
+            <label className="block text-sm font-medium text-gray-300 mb-2">自定义提示词</label>
+            <p className="text-xs text-slate-500 mb-3">给AI的额外指令，如"重点强调面料工艺"</p>
             <textarea
               value={form.customPrompt}
               onChange={e => updateForm('customPrompt', e.target.value)}
               rows={3}
               placeholder="给AI的额外指令（可选）"
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm
+                         placeholder-slate-600
+                         focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20
+                         resize-none transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">语气风格</label>
+            <label className="block text-sm font-medium text-gray-300 mb-3">语气风格</label>
             <div className="flex gap-3">
               {TONE_OPTIONS.map(t => (
                 <label key={t.value} className="flex items-center gap-2 cursor-pointer">
@@ -337,16 +350,16 @@ export default function ContentGenerateView() {
                     value={t.value}
                     checked={form.tone === t.value}
                     onChange={e => updateForm('tone', e.target.value)}
-                    className="w-4 h-4 border-gray-300 text-blue-500 focus:ring-blue-500"
+                    className="w-4 h-4 border-white/20 text-blue-400 bg-white/5 focus:ring-blue-500/50"
                   />
-                  <span className="text-sm text-gray-700">{t.label}</span>
+                  <span className="text-sm text-gray-300">{t.label}</span>
                 </label>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="block text-sm font-medium text-gray-300 mb-3">
               字数范围：{form.wordCount} 字
             </label>
             <input
@@ -356,16 +369,16 @@ export default function ContentGenerateView() {
               step={100}
               value={form.wordCount}
               onChange={e => updateForm('wordCount', Number(e.target.value))}
-              className="w-full accent-blue-500"
+              className="w-full accent-blue-400"
             />
-            <div className="flex justify-between text-xs text-gray-400 mt-1">
+            <div className="flex justify-between text-xs text-slate-600 mt-1">
               <span>300字</span>
               <span>5000字</span>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="block text-sm font-medium text-gray-300 mb-3">
               生成数量：{form.count} 篇
             </label>
             <div className="flex gap-2">
@@ -373,10 +386,10 @@ export default function ContentGenerateView() {
                 <button
                   key={n}
                   onClick={() => updateForm('count', n)}
-                  className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
+                  className={`w-10 h-10 rounded-xl text-sm font-medium transition-all ${
                     form.count === n
                       ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10'
                   }`}
                 >
                   {n}
@@ -389,44 +402,44 @@ export default function ContentGenerateView() {
 
       {/* Step 3: 生成结果 */}
       {step === 3 && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+        <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-6">
           {generating ? (
-            <div className="text-center py-16">
-              <div className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
-              <p className="text-gray-500">AI正在创作中，请稍候...</p>
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mb-4" />
+              <p className="text-slate-500">AI正在创作中，请稍候...</p>
             </div>
           ) : generatedContent ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">{generatedContent.title}</h3>
+                <h3 className="text-lg font-semibold text-white">{generatedContent.title}</h3>
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(generatedContent.body || generatedContent.content || '')
                     }}
-                    className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                    className="px-4 py-2 text-sm bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all"
                   >
                     复制内容
                   </button>
                   <button
                     onClick={() => navigate(`/geo/content/${generatedContent.id}/edit`)}
-                    className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                    className="px-4 py-2 text-sm text-white bg-blue-500 rounded-xl hover:bg-blue-600 transition-all"
                   >
                     编辑排版
                   </button>
                 </div>
               </div>
-              <div className="p-6 bg-gray-50 rounded-lg">
-                <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-700">
+              <div className="p-6 rounded-xl bg-white/[0.02] border border-white/5">
+                <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-300">
                   {(generatedContent.body || generatedContent.content || '').slice(0, 800)}
                   {(generatedContent.body || generatedContent.content || '').length > 800 && '...'}
                 </div>
               </div>
               {generatedContent.complianceScore != null && (
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-500">合规评分：</span>
+                  <span className="text-slate-500">合规评分：</span>
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    (generatedContent.complianceScore) >= 60 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    (generatedContent.complianceScore) >= 60 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'
                   }`}>
                     {generatedContent.complianceScore}
                   </span>
@@ -434,11 +447,11 @@ export default function ContentGenerateView() {
               )}
             </div>
           ) : error ? (
-            <div className="text-center py-16">
-              <p className="text-red-500 mb-4">{error}</p>
+            <div className="flex flex-col items-center justify-center py-16">
+              <p className="text-red-400 mb-4">{error}</p>
               <button
                 onClick={handleGenerate}
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                className="px-6 py-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all"
               >
                 重新生成
               </button>
@@ -452,7 +465,9 @@ export default function ContentGenerateView() {
         <button
           onClick={() => setStep(s => Math.max(0, s - 1))}
           disabled={step === 0}
-          className="px-6 py-2.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="px-6 py-2.5 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-xl
+                     hover:bg-white/10 hover:border-white/20
+                     transition-all disabled:opacity-30 disabled:cursor-not-allowed"
         >
           上一步
         </button>
@@ -461,7 +476,8 @@ export default function ContentGenerateView() {
           <button
             onClick={() => setStep(s => s + 1)}
             disabled={!canProceed()}
-            className="px-6 py-2.5 text-sm text-white bg-blue-500 rounded-lg hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-2.5 text-sm text-white bg-blue-500 rounded-xl hover:bg-blue-600
+                       disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             下一步
           </button>
@@ -469,7 +485,8 @@ export default function ContentGenerateView() {
           <button
             onClick={handleGenerate}
             disabled={generating}
-            className="px-6 py-2.5 text-sm text-white bg-green-500 rounded-lg hover:bg-green-600 disabled:opacity-60 transition-colors"
+            className="px-6 py-2.5 text-sm text-white bg-emerald-500 rounded-xl hover:bg-emerald-600
+                       disabled:opacity-60 transition-all"
           >
             {generating ? '生成中...' : '开始生成'}
           </button>

@@ -11,7 +11,6 @@ export default function SettingsProfileView() {
   const [form, setForm] = useState({ name: '', phone: '', role: 'member' })
 
   useEffect(() => {
-    // Mock load from auth context
     setForm({ name: '张三', phone: '138****8888', role: 'admin' })
   }, [])
 
@@ -22,35 +21,35 @@ export default function SettingsProfileView() {
   }
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="max-w-2xl">
       <PageHeader title="个人设置" subtitle="管理您的个人资料和账户信息" onBack={() => navigate('/geo/dashboard')} />
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">手机号</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">手机号</label>
             <input
               value={form.phone}
               disabled
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-400 cursor-not-allowed"
+              className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/10 rounded-lg text-gray-500 cursor-not-allowed"
             />
-            <p className="text-xs text-gray-400 mt-1">手机号不可修改，如需变更请联系管理员</p>
+            <p className="text-xs text-gray-500 mt-1">手机号不可修改，如需变更请联系管理员</p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">姓名</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">姓名</label>
             <input
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               placeholder="输入您的姓名"
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-colors"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">角色</label>
-            <div className="px-4 py-2.5 bg-gray-50 rounded-lg text-sm text-gray-600">
+            <label className="block text-sm font-medium text-gray-300 mb-2">角色</label>
+            <div className="px-4 py-2.5 bg-white/[0.03] rounded-lg text-sm text-gray-400">
               {form.role === 'admin' ? '👑 管理员' : '👤 成员'}
             </div>
           </div>
-          <div className="pt-4 border-t border-gray-100">
+          <div className="pt-4 border-t border-white/10">
             <button
               onClick={saveProfile}
               disabled={saving}

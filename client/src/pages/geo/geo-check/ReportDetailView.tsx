@@ -22,19 +22,19 @@ function getGeoLevel(score: number) {
 }
 
 function getScoreClass(score: number): string {
-  if (score >= 80) return 'text-emerald-500'
-  if (score >= 60) return 'text-blue-500'
-  return 'text-amber-500'
+  if (score >= 80) return 'text-emerald-400'
+  if (score >= 60) return 'text-blue-400'
+  return 'text-amber-400'
 }
 
 function PriorityBadge({ priority }: { priority: string }) {
   const map: Record<string, { label: string; className: string }> = {
-    high: { label: '高优先级', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
-    medium: { label: '中优先级', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
-    low: { label: '低优先级', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+    high: { label: '高优先级', className: 'bg-red-500/15 text-red-400 border border-red-500/20' },
+    medium: { label: '中优先级', className: 'bg-amber-500/15 text-amber-400 border border-amber-500/20' },
+    low: { label: '低优先级', className: 'bg-blue-500/15 text-blue-400 border border-blue-500/20' },
   }
-  const cfg = map[priority] ?? { label: priority, className: 'bg-gray-100 text-gray-600' }
-  return <span className={cn('text-xs px-2 py-0.5 rounded-full', cfg.className)}>{cfg.label}</span>
+  const cfg = map[priority] ?? { label: priority, className: 'bg-white/10 text-gray-400 border border-white/10' }
+  return <span className={cn('text-xs px-2 py-0.5 rounded-lg', cfg.className)}>{cfg.label}</span>
 }
 
 export default function ReportDetailView() {
@@ -97,7 +97,7 @@ export default function ReportDetailView() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-64">
-        <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+        <div className="w-8 h-8 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
       </div>
     )
   }
@@ -105,9 +105,9 @@ export default function ReportDetailView() {
   if (!report) {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
-        <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-        <p className="text-gray-500">报告不存在或加载失败</p>
-        <button onClick={() => navigate('/geo/geo-check/reports')} className="mt-4 text-blue-500 hover:underline">
+        <FileText className="w-16 h-16 mx-auto mb-4 text-slate-600" />
+        <p className="text-slate-500">报告不存在或加载失败</p>
+        <button onClick={() => navigate('/geo/geo-check/reports')} className="mt-4 text-blue-400 hover:text-blue-300 transition-colors">
           返回报告列表
         </button>
       </motion.div>
@@ -122,27 +122,27 @@ export default function ReportDetailView() {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-5 max-w-5xl">
       {/* 头部 */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+      <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-6">
         <div className="flex items-start justify-between">
           <div>
             <button
               onClick={() => navigate('/geo/geo-check/reports')}
-              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mb-3"
+              className="flex items-center gap-1 text-sm text-slate-500 hover:text-gray-300 mb-3 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               返回
             </button>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-xl font-bold text-white">
               {report.brand} — GEO体检报告
             </h1>
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm text-slate-600 mt-1">
               {report.industry} · {report.createdAt ? new Date(report.createdAt).toLocaleString('zh-CN') : '-'}
             </p>
           </div>
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 text-white rounded-lg text-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white rounded-xl text-sm transition-all"
           >
             <Download className="w-4 h-4" />
             {exporting ? '导出中...' : '导出PDF'}
@@ -176,16 +176,16 @@ export default function ReportDetailView() {
 
       {/* 平台得分 */}
       {report.platformScores && Object.keys(report.platformScores).length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-6">
           <PageHeader title="📊 AI平台可见度" />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-4">
             {Object.entries(report.platformScores).map(([platform, score]) => {
               const s = score as number
               const l = getGeoLevel(s)
               return (
-                <div key={platform} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 dark:border-gray-700">
+                <div key={platform} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs text-gray-500 truncate">{PLATFORM_NAMES[platform] ?? platform}</div>
+                    <div className="text-xs text-slate-500 truncate">{PLATFORM_NAMES[platform] ?? platform}</div>
                     <div className={cn('text-xl font-bold', getScoreClass(s))}>{s}</div>
                   </div>
                   <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: `${l.color}15` }}>
@@ -200,17 +200,17 @@ export default function ReportDetailView() {
 
       {/* 优化建议 */}
       {report.recommendations && report.recommendations.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-6">
           <PageHeader title="💡 优化建议" />
           <div className="space-y-3 mt-4">
             {report.recommendations.map((r, i) => (
-              <div key={i} className="p-4 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
+              <div key={i} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
                 <div className="flex items-center gap-2 mb-1.5">
                   <PriorityBadge priority={r.priority} />
-                  <span className="font-medium text-gray-900 dark:text-white">{r.title}</span>
+                  <span className="font-medium text-white">{r.title}</span>
                 </div>
-                <p className="text-sm text-gray-500 mb-2">{r.description}</p>
-                <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+                <p className="text-sm text-slate-500 mb-2">{r.description}</p>
+                <div className="flex items-center gap-1.5 text-xs text-emerald-400">
                   <TrendingUp className="w-3.5 h-3.5" />
                   预期提升：{r.impact}
                 </div>
@@ -222,35 +222,35 @@ export default function ReportDetailView() {
 
       {/* 关键词详情 */}
       {report.keywordCoverage && report.keywordCoverage.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-6">
           <PageHeader title="🔍 关键词检测详情" />
           <div className="overflow-x-auto mt-4">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <th className="text-left py-2 px-3 font-medium text-gray-500 dark:text-gray-400">关键词</th>
-                  <th className="text-left py-2 px-3 font-medium text-gray-500 dark:text-gray-400">平台</th>
-                  <th className="text-left py-2 px-3 font-medium text-gray-500 dark:text-gray-400">是否提及</th>
-                  <th className="text-left py-2 px-3 font-medium text-gray-500 dark:text-gray-400">排名</th>
+                <tr className="border-b border-white/5">
+                  <th className="text-left py-2 px-3 font-medium text-slate-500">关键词</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-500">平台</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-500">是否提及</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-500">排名</th>
                 </tr>
               </thead>
               <tbody>
                 {report.keywordCoverage.map((k, i) => (
-                  <tr key={i} className="border-b border-gray-50 dark:border-gray-800">
-                    <td className="py-2.5 px-3 font-medium text-gray-900 dark:text-white">{k.keyword}</td>
-                    <td className="py-2.5 px-3 text-gray-500">{PLATFORM_NAMES[k.platform] ?? k.platform}</td>
+                  <tr key={i} className="border-b border-white/[0.03]">
+                    <td className="py-2.5 px-3 font-medium text-white">{k.keyword}</td>
+                    <td className="py-2.5 px-3 text-slate-500">{PLATFORM_NAMES[k.platform] ?? k.platform}</td>
                     <td className="py-2.5 px-3">
                       {k.covered ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-600">
+                        <span className="inline-flex items-center gap-1 text-emerald-400">
                           <CheckCircle2 className="w-4 h-4" /> 提及
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-red-500">
+                        <span className="inline-flex items-center gap-1 text-red-400">
                           <XCircle className="w-4 h-4" /> 未提及
                         </span>
                       )}
                     </td>
-                    <td className="py-2.5 px-3 text-gray-500">{k.rank || '-'}</td>
+                    <td className="py-2.5 px-3 text-slate-600">{k.rank || '-'}</td>
                   </tr>
                 ))}
               </tbody>
