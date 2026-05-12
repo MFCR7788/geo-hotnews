@@ -172,7 +172,7 @@ const PORT = process.env.PORT || 3001;
 
 httpServer.listen(PORT, () => {
   console.log(`
-  🔥 GEO星擎 服务启动成功!
+  🔥 GEO星擎-AI搜索优化平台 服务启动成功!
   📡 Server running on http://localhost:${PORT}
   🔌 WebSocket ready
   🔒 用户认证系统已启用

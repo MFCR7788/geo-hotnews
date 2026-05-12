@@ -275,7 +275,7 @@ export default function AdminPage({ onClose }: { onClose?: () => void }) {
             </div>
             <div>
               <h2 className="text-gray-900 font-semibold">管理后台</h2>
-              <p className="text-slate-500 text-xs">GEO星擎 系统管理</p>
+              <p className="text-slate-500 text-xs">GEO星擎-AI搜索优化平台 系统管理</p>
             </div>
           </div>
           {onClose && <button onClick={onClose} style={{ color: '#8E8E93', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>

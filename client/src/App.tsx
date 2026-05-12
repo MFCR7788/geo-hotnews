@@ -566,11 +566,11 @@ function App() {
             {/* Logo */}
             <div className="flex items-center gap-4">
               <div className="relative">
-                <img src="/logo.png" alt="GEO星擎" className="w-10 h-10 rounded-xl object-contain shadow-lg shadow-blue-500/20" />
+                <img src="/logo.png" alt="GEO星擎-AI搜索优化平台" className="w-10 h-10 rounded-xl object-contain shadow-lg shadow-blue-500/20" />
               </div>
               <div>
                 <h1 className="text-lg font-semibold text-white tracking-tight">GEO星擎</h1>
-                <p className="text-xs text-slate-500">热点监控系统</p>
+                <p className="text-xs text-slate-500">AI搜索优化平台</p>
               </div>
             </div>
 

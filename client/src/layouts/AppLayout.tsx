@@ -187,7 +187,7 @@ export default function AppLayout() {
           <Link to="/guide" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
             <img src="/logo.png" alt="GEO" style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'contain' }} />
             <div style={{ display: 'none', flexDirection: 'column' }} className="sm:flex">
-              <span style={{ fontSize: '16px', fontWeight: 700, color: '#1C1C1E' }}>GEO星擎</span>
+              <span style={{ fontSize: '16px', fontWeight: 700, color: '#1C1C1E' }}>GEO星擎-AI搜索优化平台</span>
             </div>
           </Link>
         </div>

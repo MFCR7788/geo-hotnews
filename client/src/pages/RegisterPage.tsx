@@ -110,10 +110,10 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
       >
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
-            <img src="/logo.png" alt="GEO星擎" className="w-12 h-12 rounded-xl object-contain" />
+            <img src="/logo.png" alt="GEO星擎-AI搜索优化平台" className="w-12 h-12 rounded-xl object-contain" />
             <div className="text-left">
               <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>GEO星擎</h1>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>热点监控系统</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>AI搜索优化平台</p>
             </div>
           </div>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>创建您的账户</p>

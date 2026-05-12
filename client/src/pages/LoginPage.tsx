@@ -114,7 +114,7 @@ export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
             transition={{ delay: 0.15 }}
             style={{ fontSize: '34px', fontWeight: 700, color: '#1C1C1E', margin: '0 0 4px 0', letterSpacing: '-0.02em' }}
           >
-            GEO星擎
+            GEO星擎-AI搜索优化平台
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
