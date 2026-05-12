@@ -84,6 +84,8 @@ export interface GeoReportItem {
   summary?: string
   suggestions?: string // JSON string
   keywordDetails?: string // JSON string
+  platformScores?: Record<string, number> | string
+  keywordCoverage?: KeywordCoverageItem[] | string
   createdAt: string
   completedAt?: string
 }

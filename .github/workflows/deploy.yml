@@ -16,41 +16,27 @@ jobs:
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.SERVER_HOST }}
-          port: ${{ secrets.SERVER_PORT || 22 }}
-          username: ${{ secrets.SERVER_USERNAME || 'root' }}
+          port: ${{ secrets.SERVER_PORT }}
+          username: ${{ secrets.SERVER_USERNAME }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             set -e
             export DEPLOY_PATH="/www/geo-hotnews"
 
-            if [ ! -d "$DEPLOY_PATH/.git" ]; then
-              rm -rf $DEPLOY_PATH
-              git clone https://github.com/MFCR7788/geo-hotnews.git $DEPLOY_PATH
-            else
-              cd $DEPLOY_PATH && git pull origin main || git pull origin master
-            fi
-
-            cp $DEPLOY_PATH/server/.env.production $DEPLOY_PATH/server/.env
-
             cd $DEPLOY_PATH/server
+            cp .env.production .env
+
             npm install
             npx prisma generate
             npx prisma db push
-
             npm run build
 
             cd $DEPLOY_PATH/client
             npm install
             npm run build
 
-            pm2 delete geo-server || true
-            cd $DEPLOY_PATH/server
-            pm2 start dist/index.js --name "geo-server"
+            pm2 restart geo-server || (cd $DEPLOY_PATH/server && pm2 start dist/index.js --name "geo-server")
             pm2 save
-
-            cp $DEPLOY_PATH/deploy/nginx.conf /etc/nginx/sites-available/geo-hotnews
-            ln -sf /etc/nginx/sites-available/geo-hotnews /etc/nginx/sites-enabled/
-            rm -f /etc/nginx/sites-enabled/default
 
             nginx -t && systemctl reload nginx
 

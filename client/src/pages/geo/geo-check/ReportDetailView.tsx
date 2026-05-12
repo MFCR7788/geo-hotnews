@@ -373,7 +373,7 @@ function IssueCard({ issue, index }: { issue: EnhancedReport['issues'][0]; index
   )
 }
 
-function RecommendationCard({ rec, index }: { rec: EnhancedReport['recommendations'][0]; index: number }) {
+function RecommendationCard({ rec, index }: { rec: NonNullable<EnhancedReport['recommendations']>[0]; index: number }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
