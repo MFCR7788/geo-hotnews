@@ -472,7 +472,11 @@ function HotspotRadar() {
       bilibili: 'Bilibili',
       weibo: '微博热搜',
       hackernews: 'HackerNews',
-      duckduckgo: 'DuckDuckGo'
+      duckduckgo: 'DuckDuckGo',
+      baidu: '百度热搜',
+      douyin: '抖音热搜',
+      zhihu: '知乎热榜',
+      toutiao: '头条热搜'
     };
     return labels[source] || source;
   };

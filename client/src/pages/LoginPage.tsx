@@ -105,7 +105,7 @@ export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
               justifyContent: 'center',
               boxShadow: '0 8px 24px rgba(0,122,255,0.30)'
             }}>
-              <img src="/logo.png" alt="GEO" style={{ width: '40px', height: '40px', borderRadius: '10px', objectFit: 'contain' }} />
+              <img src="/logo.png" alt="GEO" style={{ width: '80px', height: '80px', borderRadius: '16px', objectFit: 'contain' }} />
             </div>
           </motion.div>
           <motion.h1

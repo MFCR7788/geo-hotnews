@@ -2,14 +2,13 @@ import { Server } from 'socket.io';
 import { prisma } from '../db.js';
 import { searchTwitter } from '../services/twitter.js';
 import { searchBing, searchHackerNews, deduplicateResults, normalizeUrlForDedup } from '../services/search.js';
-import { searchSogou, searchBilibili, searchWeibo, detectAndFetchAccount } from '../services/chinaSearch.js';
-import { searchZhihu, searchZhihuKeyword, searchToutiao, searchRSSFeeds } from '../services/newsSources.js';
+import { searchSogou, searchBilibili, searchWeibo, detectAndFetchAccount, searchBaiduHot, searchDouyinHot, searchZhihuHot, searchToutiaoHot } from '../services/chinaSearch.js';
 import { analyzeContent, expandKeyword, preMatchKeyword } from '../services/ai.js';
 import { sendHotspotEmail } from '../services/email.js';
 import type { SearchResult } from '../types.js';
 
 // 新鲜度过滤：丢弃超过指定小时数的内容
-const MAX_AGE_HOURS = 7 * 24; // 7天
+const MAX_AGE_HOURS = 3 * 24;
 
 function filterByFreshness(results: SearchResult[]): SearchResult[] {
   const cutoff = new Date(Date.now() - MAX_AGE_HOURS * 3600 * 1000);
@@ -26,17 +25,9 @@ function prioritizeResults(results: SearchResult[]): SearchResult[] {
     weibo: 2,
     zhihu: 2,
     toutiao: 3,
-    '36kr': 3,
-    huxiu: 3,
-    sspai: 4,
-    ifanr: 4,
-    ithome: 4,
-    infoq: 4,
-    'mit-tr': 4,
-    cls: 4,
-    thepaper: 4,
-    'custom-rss': 4,
-    bilibili: 5,
+    baidu: 3,
+    douyin: 3,
+    bilibili: 4,
     hackernews: 5,
     sogou: 6,
     bing: 7,
@@ -106,10 +97,10 @@ export async function runHotspotCheck(io: Server): Promise<void> {
         sogouResults,
         bilibiliResults,
         weiboResults,
+        baiduResults,
+        douyinResults,
         zhihuResults,
-        zhihuKwResults,
-        toutiaoResults,
-        rssResults
+        toutiaoResults
       ] = await Promise.allSettled([
         searchTwitter(keyword.text),
         searchBing(keyword.text),
@@ -117,10 +108,10 @@ export async function runHotspotCheck(io: Server): Promise<void> {
         searchSogou(keyword.text),
         searchBilibili(keyword.text),
         searchWeibo(keyword.text),
-        searchZhihu(keyword.text),
-        searchZhihuKeyword(keyword.text),
-        searchToutiao(keyword.text),
-        searchRSSFeeds(keyword.text)
+        searchBaiduHot(keyword.text),
+        searchDouyinHot(keyword.text),
+        searchZhihuHot(keyword.text),
+        searchToutiaoHot(keyword.text)
       ]);
 
       const allResults: SearchResult[] = [];
@@ -137,10 +128,10 @@ export async function runHotspotCheck(io: Server): Promise<void> {
         { name: 'Sogou', result: sogouResults },
         { name: 'Bilibili', result: bilibiliResults },
         { name: 'Weibo', result: weiboResults },
+        { name: 'Baidu', result: baiduResults },
+        { name: 'Douyin', result: douyinResults },
         { name: '知乎热榜', result: zhihuResults },
-        { name: '知乎搜索', result: zhihuKwResults },
-        { name: '今日头条', result: toutiaoResults },
-        { name: 'RSS聚合', result: rssResults }
+        { name: '头条热搜', result: toutiaoResults }
       ];
 
       for (const source of sources) {
