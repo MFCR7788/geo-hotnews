@@ -1,4 +1,5 @@
 import { cn } from '../../lib/utils'
+import type { ReactNode } from 'react'
 
 interface StatCardProps {
   value: number | string
@@ -6,7 +7,7 @@ interface StatCardProps {
   title?: string
   color?: string
   trend?: string | null
-  icon?: string
+  icon?: string | ReactNode
   loading?: boolean
   onClick?: () => void
   className?: string

@@ -563,7 +563,7 @@ export default function ReportDetailView() {
         category: 'AI可见度',
         title: '整体GEO表现偏低',
         description: `综合评分仅为${score}分，低于行业平均水平，急需系统性优化提升`,
-        affectedPlatforms: Object.keys(data.platformScores || {}).slice(0, 3),
+        affectedPlatforms: Object.keys(typeof data.platformScores === 'string' ? JSON.parse(data.platformScores || '{}') : (data.platformScores || {})).slice(0, 3),
         suggestion: '建议优先优化核心关键词的内容质量和结构化数据标记，同时加强在主要AI平台的品牌曝光度'
       })
     }

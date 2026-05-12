@@ -59,6 +59,8 @@ export interface GeoReportItem {
   overallScore: number
   status: 'completed' | 'running' | 'pending' | 'failed'
   createdAt: string
+  keywordCoverage?: KeywordCoverageItem[] | string
+  platformScores?: Record<string, number> | string
 }
 
 export interface GeoReportDetail extends GeoReportItem {

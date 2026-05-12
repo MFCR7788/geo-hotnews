@@ -67,10 +67,10 @@ const timeline = [
 
 const APPLE_BLUE = '#007AFF'
 const APPLE_GREEN = '#34C759'
-const APPLE_ORANGE = '#FF9500'
-const APPLE_RED = '#FF3B30'
+const _APPLE_ORANGE = '#FF9500'
+const _APPLE_RED = '#FF3B30'
 const APPLE_PURPLE = '#5856D6'
-const APPLE_TEAL = '#64D2FF'
+const _APPLE_TEAL = '#64D2FF'
 const GRAY_900 = '#1C1C1E'
 const GRAY_600 = '#636366'
 const GRAY_500 = '#8E8E93'
