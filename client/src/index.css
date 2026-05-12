@@ -1,98 +1,125 @@
 @import "tailwindcss";
+@import "./styles/apple-tokens.css";
 
-/* ===== Design Tokens ===== */
-:root {
-  --bg-base: #050510;
-  --bg-surface: #0a0a1a;
-  --bg-elevated: #111127;
-  --bg-hover: #16163a;
-  --border-subtle: rgba(59, 130, 246, 0.08);
-  --border-default: rgba(59, 130, 246, 0.15);
-  --border-active: rgba(59, 130, 246, 0.35);
-  --text-primary: #e8eaf0;
-  --text-secondary: #8b8fa8;
-  --text-muted: #5a5e78;
-  --accent-blue: #3b82f6;
-  --accent-cyan: #06b6d4;
-  --accent-emerald: #10b981;
-  --accent-amber: #f59e0b;
-  --accent-red: #ef4444;
-}
+/* ==========================================
+   🍎 GEO星擎 全局样式 
+   基于 Apple Human Interface Guidelines
+   ========================================== */
 
-/* Light Theme */
-:root.light {
-  --bg-base: #ffffff;
-  --bg-surface: #f8fafc;
-  --bg-elevated: #f1f5f9;
-  --bg-hover: #e2e8f0;
-  --border-subtle: rgba(59, 130, 246, 0.1);
-  --border-default: rgba(59, 130, 246, 0.2);
-  --border-active: rgba(59, 130, 246, 0.4);
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
-  --text-muted: #94a3b8;
-}
-
-body.light {
-  background: var(--bg-base);
-  color: var(--text-primary);
-}
-
-/* ===== Animations ===== */
-@theme inline {
-  --animate-spotlight: spotlight 2s ease 0.75s 1 forwards;
-  --animate-meteor-effect: meteor 5s linear infinite;
-  --animate-shimmer: shimmer 2s linear infinite;
-  --animate-pulse-soft: pulse-soft 3s ease-in-out infinite;
-
-  @keyframes spotlight {
-    0% { opacity: 0; transform: translate(-72%, -62%) scale(0.5); }
-    100% { opacity: 1; transform: translate(-50%, -40%) scale(1); }
-  }
-  @keyframes meteor {
-    0% { transform: rotate(215deg) translateX(0); opacity: 1; }
-    70% { opacity: 1; }
-    100% { transform: rotate(215deg) translateX(-500px); opacity: 0; }
-  }
-  @keyframes shimmer {
-    from { background-position: 0 0; }
-    to { background-position: -200% 0; }
-  }
-  @keyframes pulse-soft {
-    0%, 100% { opacity: 0.6; }
-    50% { opacity: 1; }
-  }
-  @keyframes spin {
-    from { --angle: 0deg; }
-    to { --angle: 360deg; }
-  }
-}
-
-@property --angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-
-/* ===== Base ===== */
-* { box-sizing: border-box; }
-
-body {
+/* ===== 严谨的全局重置 ===== */
+html, body, #root {
+  width: 100%;
+  height: 100%;
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  background: var(--bg-base);
-  color: var(--text-primary);
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  padding: 0;
 }
 
-/* ===== Scrollbar ===== */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.15); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(59, 130, 246, 0.3); }
+/* ===== 兼容旧版CSS变量（直接映射到苹果Token，无循环引用） ===== */
+:root {
+  /* 主色映射 */
+  --geo-primary: #007AFF;
+  --geo-success: #34C759;
+  --geo-warning: #FF9500;
+  --geo-danger: #FF3B30;
+  --geo-info: #8E8E93;
+  
+  /* 布局 */
+  --geo-bg: #F5F5F7;
+  --geo-sidebar-bg: #F5F5F7;
+  --geo-sidebar-active: #007AFF;
+  --geo-sidebar-text: #636366;
+  --geo-sidebar-width: 260px;
+  --geo-header-height: 52px;
+  
+  /* 背景 */
+  --bg-base: #F5F5F7;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #FFFFFF;
+  --bg-hover: #F5F5F7;
+  
+  /* 边框 */
+  --border-subtle: #E8E8ED;
+  --border-default: #D2D2D7;
+  --border-active: #007AFF;
+  
+  /* 文字 */
+  --text-primary: #1C1C1E;
+  --text-secondary: #636366;
+  --text-muted: #8E8E93;
+  --text-on-accent: #FFFFFF;
+  
+  /* 强调色 */
+  --accent-primary: #007AFF;
+  --accent-secondary: #3395FF;
+  --accent-tertiary: #64D2FF;
+  --gradient-start: #007AFF;
+  --gradient-end: #5856D6;
+  
+  /* 阴影 */
+  --shadow-soft: 0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-medium: 0 4px 16px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-strong: 0 8px 28px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04);
+  
+  /* 状态色 */
+  --sidebar-bg: #F5F5F7;
+  --sidebar-text: #636366;
+  --sidebar-active: #007AFF;
+  --sidebar-hover: rgba(0,122,255,0.08);
+  --bg-success: rgba(52,199,89,0.10);
+  --bg-error: rgba(255,59,48,0.10);
+  --bg-warning: rgba(255,149,0,0.10);
+  --text-success: #34C759;
+  --text-error: #FF3B30;
+  --text-warning: #FF9500;
+}
 
-/* ===== Line Clamp ===== */
-.line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
-.line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+/* ===== Apple 风格页面容器 ===== */
+.page-container {
+  padding: 24px;
+  background: #F5F5F7;
+}
+
+/* ===== Apple 风格卡片（兼容旧 .stat-card） ===== */
+.stat-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.04);
+}
+
+.stat-card .stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #1C1C1E;
+}
+
+.stat-card .stat-label {
+  font-size: 13px;
+  color: #8E8E93;
+  margin-top: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+}
+
+.section-title {
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #1C1C1E;
+}
+
+/* ===== 状态色标签 ===== */
+.status-draft { color: #8E8E93; }
+.status-generating { color: #FF9500; }
+.status-completed { color: #34C759; }
+.status-published { color: #007AFF; }
+.status-failed { color: #FF3B30; }
+.status-archived { color: #AEAEB2; }
+
+.geo-excellent { color: #34C759; }
+.geo-good { color: #007AFF; }
+.geo-fair { color: #FF9500; }
+.geo-poor { color: #FF3B30; }

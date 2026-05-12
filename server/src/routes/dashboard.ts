@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../db.js';
+import { memoryCache } from '../middleware/cache.js';
 
 const router = Router();
 
-// 获取 GEO 健康度概览
-router.get('/health', async (req: Request, res: Response) => {
+router.get('/health', memoryCache(60), async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId;
 

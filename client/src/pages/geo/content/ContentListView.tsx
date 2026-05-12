@@ -5,7 +5,19 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { contentApi, type ContentItem } from '../../../services/geoApi'
-import PageHeader from '../../../components/ui/PageHeader'
+import GuideTabs from '../../../components/ui/GuideTabs'
+
+/* ===== Apple Design Colors ===== */
+const APPLE_BLUE = '#007AFF'
+const APPLE_GREEN = '#34C759'
+const APPLE_ORANGE = '#FF9500'
+const GRAY_900 = '#1C1C1E'
+const GRAY_600 = '#636366'
+const GRAY_500 = '#8E8E93'
+const GRAY_200 = '#E8E8ED'
+const GRAY_100 = '#F5F5F7'
+const WHITE = '#FFFFFF'
+const CARD_SHADOW = '0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)'
 
 const PLATFORM_MAP: Record<string, string> = {
   zhihu: '知乎',
@@ -17,11 +29,11 @@ const PLATFORM_MAP: Record<string, string> = {
   website: '网站/博客',
 }
 
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  published: { label: '已发布', color: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' },
-  draft: { label: '草稿', color: 'bg-white/10 text-gray-400 border border-white/10' },
-  scheduled: { label: '待发布', color: 'bg-amber-500/15 text-amber-400 border border-amber-500/20' },
-  archived: { label: '已归档', color: 'bg-orange-500/15 text-orange-400 border border-orange-500/20' },
+const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
+  published: { label: '已发布', color: APPLE_GREEN, bg: 'rgba(52,199,89,0.10)' },
+  draft: { label: '草稿', color: GRAY_500, bg: 'rgba(142,142,147,0.10)' },
+  scheduled: { label: '待发布', color: APPLE_ORANGE, bg: 'rgba(255,149,0,0.10)' },
+  archived: { label: '已归档', color: GRAY_500, bg: 'rgba(142,142,147,0.10)' },
 }
 
 const STATUS_OPTIONS = [
@@ -42,7 +54,7 @@ export default function ContentListView() {
 
   useEffect(() => {
     contentApi.getList({ status: filterStatus || undefined, platform: filterPlatform || undefined })
-      .then(data => setList(data))
+      .then(data => setList(Array.isArray(data) ? data : []))
       .catch(() => setList([]))
       .finally(() => setLoading(false))
   }, [filterStatus, filterPlatform])
@@ -69,37 +81,78 @@ export default function ContentListView() {
   )
 
   return (
-    <div className="p-6">
-      <PageHeader
-        title="内容管理"
-        subtitle="多平台内容创作与发布"
-        action={
-          <button
-            onClick={() => navigate('/geo/content/generate')}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-xl transition-all"
-          >
-            + 新建内容
-          </button>
-        }
-      />
+    <div style={{ padding: '24px', background: GRAY_100, minHeight: '100%' }}>
+      {/* 页面标题 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div>
+          <h3 style={{ fontSize: '17px', fontWeight: 600, color: GRAY_900, margin: 0 }}>内容管理</h3>
+          <p style={{ fontSize: '13px', color: GRAY_500, margin: '2px 0 0 0' }}>多平台内容创作与发布</p>
+        </div>
+        <button
+          onClick={() => navigate('/geo/content/generate')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: 'none',
+            fontSize: '14px',
+            color: WHITE,
+            background: APPLE_BLUE,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          + 新建内容
+        </button>
+      </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 mb-5">
+      <div style={{
+        background: WHITE,
+        borderRadius: '16px',
+        padding: '16px',
+        marginBottom: '16px',
+        boxShadow: CARD_SHADOW,
+        border: '1px solid rgba(0,0,0,0.04)',
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        gap: '12px'
+      }}>
         <input
           type="text"
           placeholder="搜索标题或内容..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm
-                     placeholder-slate-600 w-48
-                     focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20
-                     transition-all"
+          style={{
+            padding: '8px 12px',
+            borderRadius: '10px',
+            border: `1px solid ${GRAY_200}`,
+            fontSize: '14px',
+            color: GRAY_900,
+            outline: 'none',
+            width: '192px',
+            flexShrink: 0,
+            fontFamily: 'inherit',
+            background: WHITE
+          }}
+          onFocus={(e) => { e.target.style.borderColor = APPLE_BLUE; e.target.style.boxShadow = '0 0 0 3px rgba(0,122,255,0.12)' }}
+          onBlur={(e) => { e.target.style.borderColor = GRAY_200; e.target.style.boxShadow = 'none' }}
         />
         <select
           value={filterStatus}
           onChange={e => setFilterStatus(e.target.value)}
-          className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm
-                     focus:outline-none focus:border-blue-500/50 transition-all"
+          style={{
+            padding: '8px 12px',
+            borderRadius: '10px',
+            border: `1px solid ${GRAY_200}`,
+            fontSize: '14px',
+            color: GRAY_900,
+            outline: 'none',
+            background: WHITE,
+            cursor: 'pointer',
+            fontFamily: 'inherit'
+          }}
         >
           <option value="">全部状态</option>
           {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -107,8 +160,17 @@ export default function ContentListView() {
         <select
           value={filterPlatform}
           onChange={e => setFilterPlatform(e.target.value)}
-          className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm
-                     focus:outline-none focus:border-blue-500/50 transition-all"
+          style={{
+            padding: '8px 12px',
+            borderRadius: '10px',
+            border: `1px solid ${GRAY_200}`,
+            fontSize: '14px',
+            color: GRAY_900,
+            outline: 'none',
+            background: WHITE,
+            cursor: 'pointer',
+            fontFamily: 'inherit'
+          }}
         >
           <option value="">全部平台</option>
           {PLATFORM_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -116,57 +178,115 @@ export default function ContentListView() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl bg-white/[0.02] border border-white/5 overflow-hidden">
+      <div style={{
+        background: WHITE,
+        borderRadius: '16px',
+        boxShadow: CARD_SHADOW,
+        border: '1px solid rgba(0,0,0,0.04)',
+        overflow: 'hidden'
+      }}>
         {loading ? (
-          <div className="text-center py-12 text-slate-500">加载中...</div>
+          <div style={{ textAlign: 'center', padding: '48px 0', color: GRAY_500, fontSize: '14px' }}>加载中...</div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-slate-500">暂无内容</div>
+          <div style={{ textAlign: 'center', padding: '48px 0', color: GRAY_500, fontSize: '14px' }}>暂无内容</div>
         ) : (
-          <table className="w-full text-sm">
+          <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse' }}>
             <thead>
-              <tr className="border-b border-white/5">
-                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">标题</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider w-24">平台</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider w-24">状态</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider w-40">创建时间</th>
-                <th className="text-right px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider w-48">操作</th>
+              <tr style={{ borderBottom: `1px solid ${GRAY_200}` }}>
+                <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: '11px', fontWeight: 600, color: GRAY_500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  标题
+                </th>
+                <th style={{ textAlign: 'left', padding: '12px 20px', width: '96px', fontSize: '11px', fontWeight: 600, color: GRAY_500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  平台
+                </th>
+                <th style={{ textAlign: 'left', padding: '12px 20px', width: '90px', fontSize: '11px', fontWeight: 600, color: GRAY_500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  状态
+                </th>
+                <th style={{ textAlign: 'left', padding: '12px 20px', width: '160px', fontSize: '11px', fontWeight: 600, color: GRAY_500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  创建时间
+                </th>
+                <th style={{ textAlign: 'right', padding: '12px 20px', width: '192px', fontSize: '11px', fontWeight: 600, color: GRAY_500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  操作
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody>
               {filtered.map(row => {
-                const statusInfo = STATUS_MAP[row.status || 'draft'] || { label: row.status || 'draft', color: 'bg-white/10 text-gray-400 border border-white/10' }
+                const statusInfo = STATUS_MAP[row.status || 'draft'] || { label: row.status || 'draft', color: GRAY_500, bg: 'rgba(142,142,147,0.10)' }
                 return (
-                  <tr key={row.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-white truncate max-w-xs">{row.title || '(无标题)'}</div>
+                  <tr key={row.id} style={{ borderBottom: `1px solid ${GRAY_200}`, transition: 'background-color 0.2s' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = GRAY_100}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <td style={{ padding: '12px 20px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 500, color: GRAY_900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '320px' }}>
+                        {row.title || '(无标题)'}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-400">
+                    <td style={{ padding: '12px 20px', color: GRAY_600, fontSize: '14px' }}>
                       {PLATFORM_MAP[row.platform || ''] || row.platform || '-'}
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`text-xs px-2 py-0.5 rounded-lg ${statusInfo.color}`}>
+                    <td style={{ padding: '12px 20px' }}>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: statusInfo.color,
+                        backgroundColor: statusInfo.bg
+                      }}>
                         {statusInfo.label}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-slate-600 text-xs">{formatDate(row.createdAt)}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-1">
+                    <td style={{ padding: '12px 20px', color: GRAY_500, fontSize: '13px' }}>
+                      {formatDate(row.createdAt)}
+                    </td>
+                    <td style={{ padding: '12px 20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
                         <button
                           onClick={() => navigate(`/geo/content/${row.id}`)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all text-xs"
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            fontSize: '12px',
+                            color: APPLE_BLUE,
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit'
+                          }}
                         >
                           查看
                         </button>
                         <button
                           onClick={() => handleCopy(row)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-gray-300 hover:bg-white/5 transition-all text-xs"
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            fontSize: '12px',
+                            color: GRAY_600,
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit'
+                          }}
                         >
                           复制
                         </button>
                         {row.status === 'draft' && (
                           <button
                             onClick={() => handlePublish(row)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all text-xs"
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              border: 'none',
+                              fontSize: '12px',
+                              color: APPLE_GREEN,
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              fontFamily: 'inherit'
+                            }}
                           >
                             发布
                           </button>
@@ -180,6 +300,7 @@ export default function ContentListView() {
           </table>
         )}
       </div>
+      <GuideTabs />
     </div>
   )
 }

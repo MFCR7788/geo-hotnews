@@ -3,9 +3,8 @@ import * as cheerio from 'cheerio';
 import crypto from 'crypto';
 import type { SearchResult } from '../types.js';
 
-// 不走系统代理的 axios 实例
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const noProxyAxios = axios.create({ proxy: false } as any);
+// axios 实例，自动检测系统代理环境变量（HTTP_PROXY/HTTPS_PROXY）
+const chinaSearchAxios = axios.create();
 
 // User Agent 列表
 const USER_AGENTS = [
@@ -47,7 +46,7 @@ export async function searchSogou(query: string): Promise<SearchResult[]> {
   await sogouLimiter.wait();
 
   try {
-    const response = await noProxyAxios.get('https://www.sogou.com/web', {
+    const response = await chinaSearchAxios.get('https://www.sogou.com/web', {
       params: {
         query,
         ie: 'utf-8'
@@ -178,7 +177,7 @@ export async function searchBilibili(query: string): Promise<SearchResult[]> {
     // 生成 buvid3 cookie 以避免 412 错误
     const buvid3 = `${crypto.randomUUID()}infoc`;
 
-    const response = await noProxyAxios.get<BilibiliSearchResponse>(
+    const response = await chinaSearchAxios.get<BilibiliSearchResponse>(
       'https://api.bilibili.com/x/web-interface/search/type',
       {
         params: {
@@ -348,7 +347,7 @@ export async function searchWeibo(query: string): Promise<SearchResult[]> {
   try {
     // 使用微博热搜公开 API（无需登录）
     // 注意：该接口可能因反爬策略返回 403，已添加降级处理
-    const response = await noProxyAxios.get('https://weibo.com/ajax/side/hotSearch', {
+    const response = await chinaSearchAxios.get('https://weibo.com/ajax/side/hotSearch', {
       headers: {
         'User-Agent': getRandomUserAgent(),
         'Accept': 'application/json',
@@ -456,7 +455,9 @@ export async function detectAndFetchAccount(keyword: string): Promise<{
 // ============================================================
 // 国内聚合搜索
 // ============================================================
-export async function searchAllChina(query: string): Promise<SearchResult[]> {
+export async function searchAllChina(query: string, resultsPerSource: number = 5): Promise<SearchResult[]> {
+  const limit = Math.max(1, Math.min(20, resultsPerSource));
+  
   const results = await Promise.allSettled([
     searchSogou(query),
     searchBilibili(query),
@@ -468,8 +469,9 @@ export async function searchAllChina(query: string): Promise<SearchResult[]> {
   
   results.forEach((result, index) => {
     if (result.status === 'fulfilled') {
-      allResults.push(...result.value);
-      console.log(`  ${sourceNames[index]}: ${result.value.length} results`);
+      const limitedResults = result.value.slice(0, limit);
+      allResults.push(...limitedResults);
+      console.log(`  ${sourceNames[index]}: ${limitedResults.length} results (limited from ${result.value.length})`);
     } else {
       console.warn(`  ${sourceNames[index]} search failed:`, result.reason);
     }

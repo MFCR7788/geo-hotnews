@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { authApi, type User, type UserSettings, tokenStore } from '../services/auth.js';
 
 interface AuthContextType {
@@ -18,62 +18,100 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(tokenStore.getUser());
+  const [user, setUser] = useState<User | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const justLoggedInRef = useRef(false);
+  const initRef = useRef(false);
+
+  const clearAuthState = useCallback(() => {
+    setUser(null);
+    setSettings(null);
+    tokenStore.clearTokens();
+  }, []);
 
   const refreshUser = useCallback(async () => {
-    console.log('[Auth] refreshUser called');
-    if (!tokenStore.getAccessToken()) {
-      console.log('[Auth] No access token, setting isLoading=false');
+    if (justLoggedInRef.current) {
+      justLoggedInRef.current = false;
       setIsLoading(false);
       return;
     }
+
+    const accessToken = tokenStore.getAccessToken();
+    if (!accessToken) {
+      setUser(null);
+      setSettings(null);
+      setIsLoading(false);
+      return;
+    }
+
+    const storedUser = tokenStore.getUser();
+    if (storedUser) {
+      setUser(storedUser);
+      if (storedUser.settings) setSettings(storedUser.settings as UserSettings);
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      console.log('[Auth] Fetching user info...');
       const me = await authApi.getMe();
-      console.log('[Auth] Got user:', me);
       setUser(me);
       tokenStore.saveUser(me);
       if (me.settings) setSettings(me.settings as UserSettings);
-    } catch (err) {
-      console.error('[Auth] Failed to fetch user:', err);
+    } catch {
+      clearAuthState();
     } finally {
-      console.log('[Auth] Setting isLoading=false');
       setIsLoading(false);
     }
-  }, []);
+  }, [clearAuthState]);
 
   useEffect(() => {
+    if (initRef.current) return;
+    initRef.current = true;
     refreshUser();
   }, [refreshUser]);
+
+  useEffect(() => {
+    const handleAuthFailure = () => {
+      clearAuthState();
+    };
+    window.addEventListener('auth:failure', handleAuthFailure);
+    return () => window.removeEventListener('auth:failure', handleAuthFailure);
+  }, [clearAuthState]);
 
   const login = async (email: string, password: string) => {
     const data = await authApi.login(email, password);
     setUser(data.user);
     if (data.user?.settings) setSettings(data.user.settings);
+    setIsLoading(false);
+    justLoggedInRef.current = true;
   };
 
   const loginWithSms = async (phone: string, code: string) => {
     const data = await authApi.loginWithSms(phone, code);
     setUser(data.user);
     if (data.user?.settings) setSettings(data.user.settings);
+    setIsLoading(false);
+    justLoggedInRef.current = true;
   };
 
   const register = async (email: string, password: string, name?: string) => {
     const data = await authApi.register(email, password, name);
     setUser(data.user);
+    setIsLoading(false);
+    justLoggedInRef.current = true;
   };
 
   const registerWithSms = async (phone: string, code: string, name?: string) => {
     const data = await authApi.registerWithSms(phone, code, name);
     setUser(data.user);
+    setIsLoading(false);
+    justLoggedInRef.current = true;
   };
 
   const logout = async () => {
     await authApi.logout();
-    setUser(null);
-    setSettings(null);
+    clearAuthState();
   };
 
   const updateSettings = async (s: Partial<UserSettings>) => {
@@ -86,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       settings,
       isLoading,
-      isLoggedIn: !!user,
+      isLoggedIn: !!user && !!tokenStore.getAccessToken(),
       login,
       loginWithSms,
       register,

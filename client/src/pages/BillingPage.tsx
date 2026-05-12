@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { subscriptionApi, formatPrice } from '../services/subscription.ts';
+import GuideTabs from '../components/ui/GuideTabs'
 
 interface BillingPageProps {
   onBack?: () => void;
@@ -63,14 +64,14 @@ export default function BillingPage({ onBack }: BillingPageProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050510] flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f7fa] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
       </div>
-    );
+    )
   }
 
   return (
-    <div className="min-h-screen bg-[#050510] text-white">
+    <div className="min-h-screen bg-[#f5f7fa] text-white">
       {/* Header */}
       <div className="border-b border-white/10">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
@@ -212,6 +213,7 @@ export default function BillingPage({ onBack }: BillingPageProps) {
           <p>如需发票，请联系客服：support@mfcr.cn</p>
         </div>
       </div>
+      <GuideTabs />
     </div>
   );
 }

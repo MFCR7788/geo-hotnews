@@ -34,10 +34,26 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '发送失败');
+      let data: any;
+      try {
+        data = await res.json();
+      } catch {
+        const text = await res.text().catch(() => '');
+        if (!res.ok) {
+          throw new Error(text || '发送失败');
+        }
+        data = {};
+      }
+      if (!res.ok) {
+        const errorMsg = data?.error || await res.text().catch(() => '发送失败');
+        throw new Error(errorMsg);
+      }
       
-      setSmsSuccess('验证码已发送，请注意查收');
+      if (data.debugCode) {
+        setSmsSuccess(`验证码已发送（测试环境）: ${data.debugCode}`);
+      } else {
+        setSmsSuccess('验证码已发送，请注意查收');
+      }
       setTimeout(() => setSmsSuccess(''), 3000);
       
       setCountdown(60);
@@ -72,7 +88,6 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
     try {
       await registerWithSms(phone, code, name);
       setSuccess(true);
-      // 注册成功，跳转到操作说明页
       setTimeout(() => navigate('/guide'), 800);
     } catch (err: any) {
       setError(err.message || '注册失败');
@@ -81,12 +96,10 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
     }
   };
 
-  const inputClass = "w-full bg-[#050510] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all";
-
   return (
-    <div className="min-h-screen bg-[#050510] flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: 'var(--bg-base)' }}>
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl" style={{ backgroundColor: 'var(--accent-primary)/10' }} />
       </div>
 
       <motion.div
@@ -99,82 +112,112 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
           <div className="inline-flex items-center gap-3 mb-4">
             <img src="/logo.png" alt="GEO星擎" className="w-12 h-12 rounded-xl object-contain" />
             <div className="text-left">
-              <h1 className="text-xl font-bold text-white">GEO星擎</h1>
-              <p className="text-xs text-slate-500">热点监控系统</p>
+              <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>GEO星擎</h1>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>热点监控系统</p>
             </div>
           </div>
-          <p className="text-slate-400 text-sm">创建您的账户</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>创建您的账户</p>
         </div>
 
-        <div className="bg-[#0a0a1a] border border-slate-800 rounded-2xl p-8 shadow-2xl">
+        <div className="rounded-2xl p-8 shadow-2xl border" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
           {success ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               className="text-center py-8"
             >
-              <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-emerald-400" />
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--bg-success)' }}>
+                <CheckCircle className="w-8 h-8" style={{ color: 'var(--text-success)' }} />
               </div>
-              <h3 className="text-white font-semibold text-lg mb-2">注册成功！</h3>
-              <p className="text-slate-400 text-sm mb-6">请返回登录页面登录</p>
-              <button
-                onClick={() => onSwitchToLogin?.() ?? navigate('/login')}
-                className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-medium py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
-              >
-                <Zap className="w-4 h-4" />
-                返回登录
-              </button>
+              <h3 className="font-semibold text-lg mb-2" style={{ color: 'var(--text-primary)' }}>注册成功！</h3>
+              <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>正在为您跳转到首页...</p>
             </motion.div>
           ) : (
-            <form onSubmit={handleRegister} className="space-y-4">
+            <form onSubmit={handleRegister} className="space-y-5">
               <div>
-                <label className="block text-sm text-slate-400 mb-2">昵称（选填）</label>
+                <label 
+                  className="block text-base font-bold mb-2" 
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  昵称（选填）
+                </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                   <input
                     type="text"
                     value={name}
                     onChange={e => setName(e.target.value)}
                     placeholder="您的昵称"
-                    className={inputClass}
+                    className="w-full rounded-xl pl-10 pr-4 py-3 focus:outline-none transition-all border"
+                    style={{
+                      backgroundColor: '#ffffff',
+                      borderColor: 'var(--border-default)',
+                      color: 'var(--text-primary)',
+                      caretColor: 'var(--accent-primary)'
+                    }}
                     autoComplete="name"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm text-slate-400 mb-2">手机号码</label>
+                <label 
+                  className="block text-base font-bold mb-2" 
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  手机号码
+                </label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                   <input
                     type="tel"
                     value={phone}
                     onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
                     placeholder="请输入手机号"
-                    className={inputClass}
+                    className="w-full rounded-xl pl-10 pr-4 py-3 focus:outline-none transition-all border"
+                    style={{
+                      backgroundColor: '#ffffff',
+                      borderColor: 'var(--border-default)',
+                      color: 'var(--text-primary)',
+                      caretColor: 'var(--accent-primary)'
+                    }}
                     maxLength={11}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm text-slate-400 mb-2">验证码</label>
+                <label 
+                  className="block text-base font-bold mb-2" 
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  验证码
+                </label>
                 <div className="relative">
-                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                   <input
                     type="text"
                     value={code}
                     onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="请输入验证码"
-                    className={inputClass.replace('pr-4', 'pr-36')}
+                    className="w-full rounded-xl pl-10 pr-36 py-3 focus:outline-none transition-all border"
+                    style={{
+                      backgroundColor: '#ffffff',
+                      borderColor: 'var(--border-default)',
+                      color: 'var(--text-primary)',
+                      caretColor: 'var(--accent-primary)'
+                    }}
                     maxLength={6}
                   />
                   <button
                     type="button"
                     onClick={handleSendCode}
                     disabled={countdown > 0 || loading}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 text-white text-xs px-4 py-2 rounded-lg transition-all flex items-center gap-1"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 hover:opacity-90 disabled:opacity-60 text-xs px-4 py-2 rounded-lg transition-all flex items-center gap-1"
+                    style={{ 
+                      backgroundColor: 'var(--accent-primary)',
+                      color: 'var(--text-on-accent)'
+                    }}
                   >
                     {countdown > 0 ? (
                       <>
@@ -192,10 +235,14 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
                 <motion.div
                   initial={{ opacity: 0, y: -5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3"
+                  className="flex items-center gap-2 rounded-xl px-4 py-3"
+                  style={{
+                    backgroundColor: 'var(--bg-success)',
+                    borderColor: 'var(--border-success)'
+                  }}
                 >
-                  <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                  <span className="text-emerald-400 text-sm">{smsSuccess}</span>
+                  <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-success)' }} />
+                  <span className="text-sm" style={{ color: 'var(--text-success)' }}>{smsSuccess}</span>
                 </motion.div>
               )}
 
@@ -203,20 +250,31 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
                 <motion.div
                   initial={{ opacity: 0, y: -5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3"
+                  className="flex items-center gap-2 rounded-xl px-4 py-3"
+                  style={{
+                    backgroundColor: 'var(--bg-error)',
+                    borderColor: 'var(--border-error)'
+                  }}
                 >
-                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                  <span className="text-red-400 text-sm">{error}</span>
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-error)' }} />
+                  <span className="text-sm" style={{ color: 'var(--text-error)' }}>{error}</span>
                 </motion.div>
               )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 mt-2"
+                className="w-full disabled:opacity-50 disabled:cursor-not-allowed font-medium py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
+                style={{
+                  background: 'var(--gradient-primary)',
+                  color: 'var(--text-on-accent)'
+                }}
               >
                 {loading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div 
+                    className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
+                    style={{ borderColor: 'var(--text-on-accent)', borderTopColor: 'transparent' }}
+                  />
                 ) : (
                   <>
                     <Zap className="w-4 h-4" />
@@ -228,11 +286,12 @@ export default function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
           )}
 
           {!success && (
-            <div className="mt-6 text-center text-sm text-slate-500">
+            <div className="mt-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
               已有账户？
               <button
                 onClick={() => onSwitchToLogin?.() ?? navigate('/login')}
-                className="text-blue-400 hover:text-blue-300 transition-colors ml-1"
+                className="transition-colors ml-1"
+                style={{ color: 'var(--accent-primary)' }}
               >
                 立即登录
               </button>

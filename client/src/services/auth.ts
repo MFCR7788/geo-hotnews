@@ -66,6 +66,15 @@ export const tokenStore = {
 let isRefreshing = false;
 let refreshQueue: Array<(token: string | null) => void> = [];
 
+async function safeJsonParse(response: Response): Promise<any> {
+  try {
+    return await response.json();
+  } catch {
+    const text = await response.text().catch(() => '');
+    throw new Error(text || 'Invalid response format');
+  }
+}
+
 async function requestWithAuth<T>(
   endpoint: string,
   options: RequestInit = {},
@@ -73,55 +82,65 @@ async function requestWithAuth<T>(
 ): Promise<T> {
   const accessToken = tokenStore.getAccessToken();
   
+  const { headers: optionHeaders, ...restOptions } = options;
   const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...restOptions,
     headers: {
       'Content-Type': 'application/json',
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...options.headers
-    },
-    ...options
+      ...optionHeaders
+    }
   });
 
   if (response.status === 401 && retry) {
-    if (isRefreshing) {
-      return new Promise((resolve, reject) => {
-        refreshQueue.push(async (newToken) => {
-          if (!newToken) {
-            reject(new Error('Authentication failed'));
-            return;
-          }
-          try {
-            const retryRes = await requestWithAuth<T>(endpoint, options, false);
-            resolve(retryRes);
-          } catch (e) {
-            reject(e);
-          }
-        });
-      });
-    }
+    let errorCode: string | undefined;
+    try {
+      const errorData = await response.json();
+      errorCode = errorData?.code;
+    } catch {}
 
-    isRefreshing = true;
-    const refreshToken = tokenStore.getRefreshToken();
-    
-    if (refreshToken) {
-      try {
-        const refreshRes = await fetch(`${API_BASE}/auth/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken })
+    // 如果是token过期，尝试刷新token
+    if (errorCode === 'token_expired' || !errorCode) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          refreshQueue.push(async (newToken) => {
+            if (!newToken) {
+              reject(new Error('Authentication failed'));
+              return;
+            }
+            try {
+              const retryRes = await requestWithAuth<T>(endpoint, options, false);
+              resolve(retryRes);
+            } catch (e) {
+              reject(e);
+            }
+          });
         });
+      }
 
-        if (refreshRes.ok) {
-          const tokens: AuthTokens = await refreshRes.json();
-          tokenStore.setTokens(tokens);
-          
-          refreshQueue.forEach(cb => cb(tokens.accessToken));
-          refreshQueue = [];
-          isRefreshing = false;
-          
-          return requestWithAuth<T>(endpoint, options, false);
+      isRefreshing = true;
+      const refreshToken = tokenStore.getRefreshToken();
+      
+      if (refreshToken) {
+        try {
+          const refreshRes = await fetch(`${API_BASE}/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken })
+          });
+
+          if (refreshRes.ok) {
+            const tokens: AuthTokens = await safeJsonParse(refreshRes);
+            tokenStore.setTokens(tokens);
+            
+            refreshQueue.forEach(cb => cb(tokens.accessToken));
+            refreshQueue = [];
+            isRefreshing = false;
+            
+            return requestWithAuth<T>(endpoint, options, false);
+          }
+        } catch (e) {
         }
-      } catch (e) {
       }
     }
 
@@ -129,20 +148,26 @@ async function requestWithAuth<T>(
     refreshQueue = [];
     isRefreshing = false;
     tokenStore.clearTokens();
-    window.location.href = '/login';
+    window.dispatchEvent(new CustomEvent('auth:failure', { detail: { reason: 'token_refresh_failed' } }));
     throw new Error('Authentication failed');
   }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || 'Request failed');
+    const error = await response.json().catch(() => null);
+    const errorMessage = error?.error || await response.text().catch(() => 'Request failed');
+    throw new Error(errorMessage || 'Request failed');
   }
 
   if (response.status === 204) {
     return undefined as T;
   }
 
-  return response.json();
+  try {
+    return await response.json();
+  } catch {
+    const text = await response.text().catch(() => '');
+    throw new Error(text || 'Invalid response format');
+  }
 }
 
 export const authApi = {
@@ -152,7 +177,7 @@ export const authApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, name })
     });
-    const data = await res.json();
+    const data = await safeJsonParse(res);
     if (!res.ok) throw new Error(data.error || '注册失败');
     
     tokenStore.setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
@@ -166,7 +191,7 @@ export const authApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone, code, name })
     });
-    const data = await res.json();
+    const data = await safeJsonParse(res);
     if (!res.ok) throw new Error(data.error || '注册失败');
     
     tokenStore.setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
@@ -180,7 +205,7 @@ export const authApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    const data = await res.json();
+    const data = await safeJsonParse(res);
     if (!res.ok) throw new Error(data.error || '登录失败');
     
     tokenStore.setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
@@ -194,7 +219,7 @@ export const authApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone, code })
     });
-    const data = await res.json();
+    const data = await safeJsonParse(res);
     if (!res.ok) throw new Error(data.error || '登录失败');
     
     tokenStore.setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
@@ -208,7 +233,7 @@ export const authApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone })
     });
-    const data = await res.json();
+    const data = await safeJsonParse(res);
     if (!res.ok) throw new Error(data.error || '发送失败');
     return data;
   },

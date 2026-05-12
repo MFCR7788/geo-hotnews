@@ -19,6 +19,9 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@alicloud/dysmsapi20170525": "^4.5.1",
+    "@alicloud/openapi-client": "^0.4.15",
+    "@alicloud/tea-util": "^1.4.11",
     "@openrouter/sdk": "^0.5.1",
     "@prisma/client": "^6.19.2",
     "axios": "^1.13.4",

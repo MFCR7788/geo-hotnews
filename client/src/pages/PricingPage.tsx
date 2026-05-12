@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { subscriptionApi, paymentApi, formatPrice, getPlanLimitText } from '../services/subscription.ts';
 import type { Plan } from '../services/subscription.ts';
 import { authApi } from '../services/auth.ts';
+import GuideTabs from '../components/ui/GuideTabs'
 
 interface PricingPageProps {
   onBack?: () => void;
@@ -89,14 +90,14 @@ export default function PricingPage({ onBack }: PricingPageProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050510] flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f7fa] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
       </div>
-    );
+    )
   }
 
   return (
-    <div className="min-h-screen bg-[#050510] text-white">
+    <div className="min-h-screen bg-[#f5f7fa] text-white">
       {/* Header */}
       <div className="border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -295,6 +296,7 @@ export default function PricingPage({ onBack }: PricingPageProps) {
           <p className="mt-2">支付方式：微信支付、支付宝（由虎皮椒提供）</p>
         </div>
       </div>
+      <GuideTabs />
     </div>
   );
 }

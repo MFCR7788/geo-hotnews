@@ -10,7 +10,16 @@ router.get('/templates', requireAuth, async (req: Request, res: Response) => {
   try {
     const { category, platform, contentType } = req.query;
     const where: any = { isActive: true };
-    if (category) where.category = String(category);
+    
+    // 如果有category参数，匹配模板的category字段或显示product类模板（产品类模板适用于所有行业）
+    if (category) {
+      where.OR = [
+        { category: String(category) },
+        { category: 'product' },
+        { category: 'platform' },
+      ];
+    }
+    
     if (platform) where.platform = String(platform);
     if (contentType) where.contentType = String(contentType);
 
@@ -182,6 +191,10 @@ router.put('/:id', requireAuth, async (req: Request, res: Response) => {
 // POST /api/content/:id/publish
 router.post('/:id/publish', requireAuth, async (req: Request, res: Response) => {
   try {
+    const existing = await prisma.content.findFirst({
+      where: { id: String(req.params.id), userId: req.user!.userId },
+    });
+    if (!existing) return res.status(404).json({ error: 'Content not found' });
     const content = await prisma.content.update({
       where: { id: String(req.params.id) },
       data: { status: 'published', publishedAt: new Date() },
@@ -195,6 +208,10 @@ router.post('/:id/publish', requireAuth, async (req: Request, res: Response) => 
 // POST /api/content/:id/archive
 router.post('/:id/archive', requireAuth, async (req: Request, res: Response) => {
   try {
+    const existing = await prisma.content.findFirst({
+      where: { id: String(req.params.id), userId: req.user!.userId },
+    });
+    if (!existing) return res.status(404).json({ error: 'Content not found' });
     const content = await prisma.content.update({
       where: { id: String(req.params.id) },
       data: { status: 'archived' },
@@ -208,6 +225,10 @@ router.post('/:id/archive', requireAuth, async (req: Request, res: Response) => 
 // DELETE /api/content/:id
 router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
+    const existing = await prisma.content.findFirst({
+      where: { id: String(req.params.id), userId: req.user!.userId },
+    });
+    if (!existing) return res.status(404).json({ error: 'Content not found' });
     await prisma.content.delete({ where: { id: String(req.params.id) } });
     res.json({ message: 'Content deleted' });
   } catch (error) {

@@ -8,6 +8,7 @@ import { videoApi } from '../../../services/geoApi'
 import type { VideoAsset, VideoStats } from '../../../services/geoApi'
 import PageHeader from '../../../components/ui/PageHeader'
 import StatCard from '../../../components/ui/StatCard'
+import GuideTabs from '../../../components/ui/GuideTabs'
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   uploading: { label: '上传中', color: 'bg-amber-500/15 text-amber-400' },
@@ -81,16 +82,16 @@ export default function VideoCenterView() {
             onChange={e => setFilter(f => ({ ...f, status: e.target.value }))}
             className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-colors"
           >
-            <option value="" className="bg-[#0a0a1a]">全部状态</option>
-            {STATUS_OPTIONS.map(s => <option key={s} value={s} className="bg-[#0a0a1a]">{STATUS_MAP[s]?.label || s}</option>)}
+            <option value="" className="bg-[#ffffff]">全部状态</option>
+            {STATUS_OPTIONS.map(s => <option key={s} value={s} className="bg-[#ffffff]">{STATUS_MAP[s]?.label || s}</option>)}
           </select>
           <select
             value={filter.platform}
             onChange={e => setFilter(f => ({ ...f, platform: e.target.value }))}
             className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-colors"
           >
-            <option value="" className="bg-[#0a0a1a]">全部平台</option>
-            {PLATFORM_OPTIONS.map(p => <option key={p} value={p} className="bg-[#0a0a1a]">{PLATFORM_MAP[p] || p}</option>)}
+            <option value="" className="bg-[#ffffff]">全部平台</option>
+            {PLATFORM_OPTIONS.map(p => <option key={p} value={p} className="bg-[#ffffff]">{PLATFORM_MAP[p] || p}</option>)}
           </select>
         </div>
         <button
@@ -176,6 +177,7 @@ export default function VideoCenterView() {
           </button>
         ))}
       </div>
+      <GuideTabs />
     </div>
   )
 }

@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Menu,
   LayoutDashboard, Search, Edit, Video, List, View, BookOpen,
   Settings, HelpCircle, PanelLeftClose, PanelLeftOpen,
-  Flame, Sparkles, Bell, User, ChevronRight, Building2, Key, CreditCard, LogOut,
-  Crown
+  Flame, Bell, ChevronDown, Building2, Key, CreditCard, LogOut,
+  Crown, User
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../context/AuthContext'
@@ -24,7 +24,7 @@ const navItems: NavItem[] = [
   { label: '使用指南', icon: HelpCircle, path: '/guide' },
   { label: '数据看板', icon: LayoutDashboard, path: '/geo/dashboard' },
   {
-    label: 'GEO体检', icon: Search, path: '/geo/geo-check',
+    label: 'GEO体检', icon: Search,
     children: [
       { label: '发起体检', path: '/geo/geo-check' },
       { label: '报告管理', path: '/geo/geo-check/reports' },
@@ -63,120 +63,217 @@ const navItems: NavItem[] = [
   },
 ]
 
-// 无 legacyNavItems — 热点监控已合并到 navItems
-
 export default function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, isLoggedIn, logout } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({})
+  const [manualOpenMenus, setManualOpenMenus] = useState<Set<string>>(new Set())
+
+  const shouldOpenMenu = useCallback((label: string) => {
+    const item = navItems.find(i => i.label === label)
+    const hasActiveChild = item?.children?.some(c =>
+      location.pathname === c.path || location.pathname.startsWith(c.path + '/')
+    )
+    return hasActiveChild || manualOpenMenus.has(label)
+  }, [location.pathname, manualOpenMenus])
+
+  useEffect(() => {
+    const currentPath = location.pathname
+    setManualOpenMenus(prev => {
+      const newSet = new Set<string>()
+      prev.forEach(label => {
+        const item = navItems.find(i => i.label === label)
+        if (item?.children?.some(c => currentPath === c.path || currentPath.startsWith(c.path + '/'))) {
+          newSet.add(label)
+        }
+      })
+      return newSet
+    })
+  }, [location.pathname])
+
   const [showNotifs, setShowNotifs] = useState(false)
   const [notifList, setNotifList] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
 
-  // 加载通知
   useEffect(() => {
     if (!isLoggedIn) return
     notificationsApi.getAll({ limit: 20 }).then(res => {
-      setNotifList(res.data)
-      setUnreadCount(res.unreadCount)
+      setNotifList(res.data || res || [])
+      setUnreadCount(res.unreadCount || 0)
     }).catch(() => {})
   }, [isLoggedIn])
 
   const handleMarkAllRead = async () => {
-    await notificationsApi.markAllRead()
+    await notificationsApi.markAllAsRead()
     setUnreadCount(0)
     setNotifList(prev => prev.map(n => ({ ...n, isRead: true })))
   }
 
-  // 初始化：默认展开当前路径的父菜单
-  useEffect(() => {
-    const newOpen: Record<string, boolean> = {}
-    navItems.forEach(item => {
-      if (item.children?.some(c => location.pathname.startsWith(c.path))) {
-        newOpen[item.label] = true
-      }
+  function toggleMenu(label: string) {
+    setManualOpenMenus(prev => {
+      const newSet = new Set(prev)
+      newSet.has(label) ? newSet.delete(label) : newSet.add(label)
+      return newSet
     })
-    setOpenMenus(newOpen)
+  }
+
+  const isActive = useCallback((path: string) => {
+    return location.pathname === path || location.pathname.startsWith(path + '/')
   }, [location.pathname])
 
-  // 强制深色模式（匹配 HotspotRadar 风格）
-  useEffect(() => {
-    document.documentElement.classList.add('dark')
-    document.body.classList.add('dark', 'bg-[#050510]')
-  }, [])
-
-  function toggleMenu(label: string) {
-    setOpenMenus(prev => ({ ...prev, [label]: !prev[label] }))
-  }
-
-  function isActive(path: string) {
-    return location.pathname === path || location.pathname.startsWith(path + '/')
-  }
-
   return (
-    <div className="flex h-screen bg-[#050510]">
-      {/* ===== 最外层固定顶栏 - 深藏青 ===== */}
-      <header className="fixed top-0 left-0 right-0 z-[60] h-14 flex items-center justify-between px-4 lg:px-6 bg-[#0b1a2e]/95 backdrop-blur-xl border-b border-white/5">
-        {/* 左侧：品牌 Logo */}
-        <div className="flex items-center gap-3">
+    <div style={{ display: 'flex', height: '100vh', background: '#F5F5F7' }}>
+      {/* ===== 🍎 苹果顶栏 - 毛玻璃效果 ===== */}
+      <header
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 60,
+          height: '52px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 20px',
+          background: 'rgba(245,245,247,0.72)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          borderBottom: '1px solid rgba(0,0,0,0.06)'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            style={{
+              display: 'none',
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              border: 'none',
+              background: 'transparent',
+              color: '#636366',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            className="lg:flex"
+            onMouseEnter={e => { e.currentTarget.style.background = '#E8E8ED'; e.currentTarget.style.color = '#48484A' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#636366' }}
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
           <button
             onClick={() => setMobileOpen(true)}
-            className="lg:hidden p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+            style={{
+              display: 'flex',
+              width: '36px',
+              height: '36px',
+              borderRadius: '8px',
+              border: 'none',
+              background: 'transparent',
+              color: '#636366',
+              cursor: 'pointer',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            className="lg:hidden"
           >
-            <Menu className="w-5 h-5 text-gray-300" />
+            <Menu size={18} />
           </button>
-          <Link to="/guide" className="flex items-center gap-2.5">
-            <img src="/logo.png" alt="GEO星擎" className="w-8 h-8 rounded-lg object-contain" />
-            <div className="hidden sm:flex flex-col leading-tight">
-              <span className="text-base font-bold text-white">GEO星擎</span>
-              <span className="text-[11px] text-gray-400">热点监控系统</span>
+          <Link to="/guide" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+            <img src="/logo.png" alt="GEO" style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'contain' }} />
+            <div style={{ display: 'none', flexDirection: 'column' }} className="sm:flex">
+              <span style={{ fontSize: '16px', fontWeight: 700, color: '#1C1C1E' }}>GEO星擎</span>
             </div>
           </Link>
         </div>
 
-        {/* 右侧：功能按钮组 */}
-        <div className="flex items-center gap-2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {isLoggedIn && (
             <>
-              {/* 管理后台 */}
-              <Link
-                to="/admin"
-                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 text-xs font-medium transition-colors"
-              >
-                <Crown className="w-3.5 h-3.5" />
-                管理后台
-              </Link>
-              {/* 升级方案 */}
-              <Link
-                to="/pricing"
-                className="hidden sm:flex items-center px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-500 hover:from-blue-500 hover:to-indigo-400 text-white text-xs font-medium shadow-md shadow-blue-500/20 transition-all"
-              >
+              {user?.role === 'admin' && (
+                <Link to="/admin" style={{
+                  display: 'none',
+                  padding: '6px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: '#AF52DE',
+                  background: 'rgba(175,82,222,0.10)',
+                  textDecoration: 'none',
+                  transition: 'all 0.15s ease'
+                }} className="md:flex" onMouseEnter={e => e.currentTarget.style.background = 'rgba(175,82,222,0.16)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(175,82,222,0.10)'}>
+                  <Crown size={14} style={{ marginRight: '4px' }} />
+                  管理后台
+                </Link>
+              )}
+              <Link to="/pricing" style={{
+                display: 'none',
+                padding: '8px 16px',
+                borderRadius: '9999px',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: '#FFFFFF',
+                background: 'var(--apple-blue, #007AFF)',
+                textDecoration: 'none',
+                boxShadow: '0 2px 8px rgba(0,122,255,0.25)',
+                transition: 'all 0.2s ease'
+              }} className="sm:flex" onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.04)'} onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
                 升级方案
               </Link>
-              {/* 会员 */}
-              <Link
-                to="/subscription"
-                className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-gray-300 hover:text-yellow-400 hover:bg-white/5 text-xs transition-colors"
-              >
-                <Crown className="w-4 h-4" />
+              <Link to="/subscription" style={{
+                display: 'none',
+                padding: '6px 12px',
+                borderRadius: '9999px',
+                fontSize: '12px',
+                fontWeight: 500,
+                color: '#636366',
+                textDecoration: 'none',
+                transition: 'all 0.15s ease'
+              }} className="sm:flex" onMouseEnter={e => { e.currentTarget.style.background = '#E8E8ED' }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
                 会员
               </Link>
-              {/* 通知 - 原始下拉面板 */}
-              <div
-                className="relative"
-                onMouseEnter={() => setShowNotifs(true)}
-                onMouseLeave={() => setShowNotifs(false)}
-              >
-                <button
-                  onClick={() => setShowNotifs(!showNotifs)}
-                  className="relative flex items-center justify-center w-8 h-8 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+              <div className="relative" onMouseEnter={() => setShowNotifs(true)} onMouseLeave={() => setShowNotifs(false)}>
+                <button style={{
+                  position: 'relative',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#636366',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#E8E8ED' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                 >
-                  <Bell className="w-4.5 h-4.5" />
+                  <Bell size={18} />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none flex items-center justify-center">
+                    <span style={{
+                      position: 'absolute',
+                      top: '-2px',
+                      right: '-4px',
+                      minWidth: '18px',
+                      height: '18px',
+                      padding: '0 4px',
+                      borderRadius: '9999px',
+                      background: '#FF3B30',
+                      color: '#FFFFFF',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      lineHeight: '18px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
@@ -189,30 +286,56 @@ export default function AppLayout() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.96 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 top-full mt-1 w-80 bg-[#0a0a1a]/95 backdrop-blur-2xl rounded-xl border border-white/10 shadow-2xl overflow-hidden z-[70]"
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: '100%',
+                        marginTop: '8px',
+                        width: '320px',
+                        borderRadius: '16px',
+                        border: '1px solid rgba(0,0,0,0.06)',
+                        background: '#FFFFFF',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06)',
+                        overflow: 'hidden',
+                        zIndex: 70
+                      }}
                     >
-                      <div className="flex items-center justify-between p-3 border-b border-white/5">
-                        <h3 className="text-sm font-medium text-white">通知</h3>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
+                        borderBottom: '1px solid #E8E8ED'
+                      }}>
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#1C1C1E' }}>通知</span>
                         {unreadCount > 0 && (
-                          <button onClick={handleMarkAllRead} className="text-xs text-blue-400 hover:text-blue-300">全部已读</button>
+                          <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', fontSize: '12px', color: '#007AFF', cursor: 'pointer', fontWeight: 500 }}>
+                            全部已读
+                          </button>
                         )}
                       </div>
-                      <div className="max-h-72 overflow-y-auto">
-                        {notifList.length === 0 ? (
-                          <p className="text-gray-500 text-sm text-center py-6">暂无通知</p>
+                      <div style={{ maxHeight: '288px', overflowY: 'auto' }}>
+                        {!notifList.length ? (
+                          <p style={{ textAlign: 'center', padding: '24px 0', fontSize: '14px', color: '#8E8E93' }}>暂无通知</p>
                         ) : (
-                          <div className="divide-y divide-white/5">
-                            {notifList.slice(0, 6).map(n => (
-                              <div
-                                key={n.id}
-                                onClick={() => n.hotspotUrl && window.open(n.hotspotUrl, '_blank', 'noopener,noreferrer')}
-                                className={cn('p-3 transition-colors cursor-pointer', n.isRead ? 'opacity-50' : 'hover:bg-white/5')}
-                              >
-                                <p className="text-sm font-medium text-white">{n.title}</p>
-                                <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{n.content}</p>
-                              </div>
-                            ))}
-                          </div>
+                          notifList.slice(0, 6).map(n => (
+                            <div
+                              key={n.id}
+                              onClick={() => n.hotspotUrl && window.open(n.hotspotUrl, '_blank', 'noopener,noreferrer')}
+                              style={{
+                                padding: '12px 16px',
+                                cursor: 'pointer',
+                                opacity: n.isRead ? 0.5 : 1,
+                                borderBottom: '1px solid #E8E8ED',
+                                transition: 'background 0.15s ease'
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#FAFAFA'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <p style={{ fontSize: '14px', fontWeight: 500, color: '#1C1C1E', margin: '0 0 2px 0' }}>{n.title}</p>
+                              <p style={{ fontSize: '12px', color: '#636366', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{n.content}</p>
+                            </div>
+                          ))
                         )}
                       </div>
                     </motion.div>
@@ -221,144 +344,204 @@ export default function AppLayout() {
               </div>
             </>
           )}
-          {/* 星宇（设置）→ 原始 SettingsPage */}
-          <Link
-            to="/settings"
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
-            title="设置"
-          >
-            <Settings className="w-4.5 h-4.5" />
+          <Link to="/settings" style={{
+            width: '36px', height: '36px', borderRadius: '50%', border: 'none',
+            background: 'transparent', color: '#636366', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            transition: 'all 0.15s ease', textDecoration: 'none'
+          }} title="设置"
+            onMouseEnter={e => { e.currentTarget.style.background = '#E8E8ED'; e.currentTarget.style.color = '#48484A' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#636366' }}>
+            <Settings size={18} />
           </Link>
-          {/* 退出 */}
           {isLoggedIn ? (
             <button
               onClick={async () => {
                 await logout()
                 navigate('/login')
               }}
-              className="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-red-400 hover:bg-white/5 transition-colors"
               title="退出登录"
+              style={{
+                width: '36px', height: '36px', borderRadius: '50%', border: 'none',
+                background: 'transparent', color: '#8E8E93', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#E8E8ED'; e.currentTarget.style.color = '#FF3B30' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#8E8E93' }}
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut size={18} />
             </button>
           ) : (
-            <Link
-              to="/login"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 text-sm transition-colors"
-            >
+            <Link to="/login" style={{
+              padding: '8px 16px', borderRadius: '9999px', fontSize: '14px',
+              fontWeight: 500, color: '#007AFF', textDecoration: 'none',
+              transition: 'all 0.15s ease'
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,122,255,0.08)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               登录
             </Link>
           )}
         </div>
       </header>
 
-      {/* 侧边栏 */}
+      {/* ===== 🍎 苹果侧边栏 - 浅色风格 ===== */}
       <aside
         className={cn(
-          'fixed top-14 left-0 bottom-0 z-50 flex flex-col bg-[#0a0a1a]/80 backdrop-blur-xl border-r border-white/5 transition-all duration-300',
-          collapsed ? 'w-16' : 'w-56',
-          'max-lg:translate-x-full',
+          'fixed top-[52px] left-0 bottom-0 z-50 flex flex-col overflow-x-hidden',
+          collapsed ? 'w-[64px]' : 'w-[260px]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
+        style={{
+          background: '#F5F5F7',
+          borderRight: '1px solid #E8E8ED',
+          transition: 'width 0.25s var(--ease-out, cubic-bezier(0,0,0.58,1))'
+        }}
       >
-        {/* 导航菜单 - 无Logo区，菜单直接从顶部开始 */}
-        <nav className="flex-1 overflow-y-auto pt-3 pb-2">
-          <div className="px-2 space-y-0.5">
-            {navItems.map(item => (
-              <div key={item.label}>
-                {item.children ? (
-                  <>
-                    <button
-                      onClick={() => toggleMenu(item.label)}
-                      className={cn(
-                        'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors',
-                        Object.values(openMenus).some(v => v) && !collapsed
-                          ? 'text-gray-300'
-                          : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                      )}
-                    >
-                      <item.icon className="w-4 h-4 flex-shrink-0" />
-                      {!collapsed && (
-                        <>
-                          <span className="flex-1 text-left">{item.label}</span>
-                          <ChevronRight
-                            className={cn(
-                              'w-3 h-3 transition-transform',
-                              openMenus[item.label] && 'rotate-90'
-                            )}
-                          />
-                        </>
-                      )}
-                    </button>
-                    <AnimatePresence>
-                      {openMenus[item.label] && !collapsed && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="ml-5 space-y-0.5 overflow-hidden"
-                        >
-                          {item.children.map(child => (
-                            <Link
-                              key={child.path}
-                              to={child.path}
-                              onClick={() => setMobileOpen(false)}
-                              className={cn(
-                                'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-sm transition-colors',
-                                isActive(child.path)
-                                  ? 'bg-blue-600 text-white'
-                                  : 'text-gray-500 hover:bg-gray-800 hover:text-white'
-                              )}
-                            >
-                              {child.icon && <child.icon className="w-3.5 h-3.5" />}
-                              <span>{child.label}</span>
-                            </Link>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </>
-                ) : (
-                  <Link
-                    to={item.path!}
-                    onClick={() => setMobileOpen(false)}
-                    className={cn(
-                      'flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors',
-                      isActive(item.path!)
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                    )}
+        <nav style={{ flex: 1, overflowY: 'auto', padding: '12px 8px' }}>
+          {navItems.map(item => (
+            <div key={item.label}>
+              {item.children ? (
+                <>
+                  <button
+                    onClick={() => toggleMenu(item.label)}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: collapsed ? '0' : '10px',
+                      padding: collapsed ? '10px' : '10px 12px',
+                      borderRadius: '12px',
+                      border: 'none',
+                      background: shouldOpenMenu(item.label) && !collapsed
+                        ? 'rgba(0,122,255,0.08)' : 'transparent',
+                      color: shouldOpenMenu(item.label) && !collapsed
+                        ? '#007AFF' : '#636366',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      textAlign: 'left',
+                      fontFamily: 'inherit'
+                    }}
+                    onMouseEnter={e => {
+                      if (!shouldOpenMenu(item.label)) {
+                        e.currentTarget.style.background = '#E8E8ED'
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!shouldOpenMenu(item.label)) {
+                        e.currentTarget.style.background = 'transparent'
+                      }
+                    }}
                   >
-                    <item.icon className="w-4 h-4 flex-shrink-0" />
-                    {!collapsed && <span>{item.label}</span>}
-                  </Link>
-                )}
-              </div>
-            ))}
-          </div>
+                    <item.icon size={18} style={{ flexShrink: 0 }} />
+                    {!collapsed && (
+                      <>
+                        <span style={{ flex: 1 }}>{item.label}</span>
+                        <ChevronDown
+                          size={14}
+                          style={{
+                            transform: shouldOpenMenu(item.label) ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s ease',
+                            flexShrink: 0
+                          }}
+                        />
+                      </>
+                    )}
+                  </button>
+                  <AnimatePresence>
+                    {shouldOpenMenu(item.label) && !collapsed && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        style={{
+                          marginLeft: '36px',
+                          overflow: 'hidden',
+                          paddingLeft: '12px',
+                          borderLeft: '1px solid #E8E8ED'
+                        }}
+                      >
+                        {item.children.map(child => (
+                          <Link
+                            key={child.path}
+                            to={child.path}
+                            onClick={() => setMobileOpen(false)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '8px 12px',
+                              borderRadius: '8px',
+                              fontSize: '13px',
+                              fontWeight: isActive(child.path) ? 600 : 400,
+                              color: isActive(child.path) ? '#007AFF' : '#636366',
+                              background: isActive(child.path) ? 'rgba(0,122,255,0.08)' : 'transparent',
+                              textDecoration: 'none',
+                              transition: 'all 0.15s ease',
+                              marginBottom: '2px'
+                            }}
+                            onMouseEnter={e => { if (!isActive(child.path)) e.currentTarget.style.background = '#E8E8ED' }}
+                            onMouseLeave={e => { if (!isActive(child.path)) e.currentTarget.style.background = 'transparent' }}
+                          >
+                            {child.icon && <child.icon size={14} />}
+                            <span>{child.label}</span>
+                          </Link>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </>
+              ) : (
+                <Link
+                  to={item.path!}
+                  onClick={() => setMobileOpen(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: collapsed ? '0' : '10px',
+                    padding: collapsed ? '10px' : '10px 12px',
+                    borderRadius: '12px',
+                    textDecoration: 'none',
+                    fontSize: '14px',
+                    fontWeight: isActive(item.path!) ? 600 : 500,
+                    color: isActive(item.path!) ? '#007AFF' : '#636366',
+                    background: isActive(item.path!) ? 'rgba(0,122,255,0.08)' : 'transparent',
+                    transition: 'all 0.15s ease',
+                    marginBottom: '2px'
+                  }}
+                  onMouseEnter={e => { if (!isActive(item.path!)) e.currentTarget.style.background = '#E8E8ED' }}
+                  onMouseLeave={e => { if (!isActive(item.path!)) e.currentTarget.style.background = 'transparent' }}
+                >
+                  <item.icon size={18} style={{ flexShrink: 0 }} />
+                  {!collapsed && <span>{item.label}</span>}
+                </Link>
+              )}
+            </div>
+          ))}
         </nav>
-
-        {/* 折叠按钮 */}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="hidden lg:flex items-center justify-center h-10 border-t border-white/5 text-gray-500 hover:text-white transition-colors"
-        >
-          {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
-        </button>
       </aside>
 
       {/* 移动端遮罩 */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.40)', zIndex: 40, backdropFilter: 'blur(4px)' }}
+          className="lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* 主内容区 */}
-      <div className={cn('flex-1 flex flex-col mt-14 transition-all duration-300', collapsed ? 'lg:ml-16' : 'lg:ml-56')}>
-        {/* 页面内容 - 无副顶栏，内容直接从顶部开始 */}
-        <main className="flex-1 overflow-auto p-4 md:p-6">
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        marginTop: '52px',
+        transition: 'all 0.25s var(--ease-out, cubic-bezier(0,0,0.58,1))'
+      }} className={collapsed ? 'lg:ml-[64px]' : 'lg:ml-[260px]'}>
+        <main style={{ flex: 1, overflowY: 'auto', background: '#F5F5F7' }}>
           <Outlet />
         </main>
       </div>

@@ -2,11 +2,11 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../db.js';
 import { sortHotspots } from '../utils/sortHotspots.js';
 import { requireAuth } from '../middleware/auth.js';
+import { memoryCache } from '../middleware/cache.js';
 
 const router = Router();
 
-// 热点列表：需要登录（只看自己订阅关键词的热点）
-router.get('/', requireAuth, async (req: Request, res: Response) => {
+router.get('/', requireAuth, memoryCache(30), async (req: Request, res: Response) => {
   try {
     const { 
       page = '1', 
@@ -256,28 +256,55 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
 // 手动搜索热点
 router.post('/search', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { query, sources = ['twitter', 'bing'] } = req.body;
+    const { query, region = 'global', resultsPerSource = 5 } = req.body;
 
     if (!query) {
       return res.status(400).json({ error: 'Query is required' });
     }
 
-    const { searchBing } = await import('../services/search.js');
+    const { searchAll, deduplicateResults } = await import('../services/search.js');
+    const { searchAllChina } = await import('../services/chinaSearch.js');
     const { analyzeContent } = await import('../services/ai.js');
 
     const results: any[] = [];
 
-    if (sources.includes('bing')) {
+    if (region === 'global') {
       try {
-        const webResults = await searchBing(query);
-        results.push(...webResults);
+        const globalResults = await searchAll(query, resultsPerSource);
+        results.push(...globalResults);
       } catch (error) {
-        console.error('Bing search failed:', error);
+        console.error('Global search failed:', error);
       }
     }
 
+    if (region === 'china') {
+      try {
+        const chinaResults = await searchAllChina(query, resultsPerSource);
+        results.push(...chinaResults);
+      } catch (error) {
+        console.error('China search failed:', error);
+      }
+    }
+
+    if (region === 'both') {
+      try {
+        const globalResults = await searchAll(query, resultsPerSource);
+        results.push(...globalResults);
+      } catch (error) {
+        console.error('Global search failed:', error);
+      }
+      try {
+        const chinaResults = await searchAllChina(query, resultsPerSource);
+        results.push(...chinaResults);
+      } catch (error) {
+        console.error('China search failed:', error);
+      }
+    }
+
+    const uniqueResults = deduplicateResults(results);
+
     const analyzedResults = await Promise.all(
-      results.slice(0, 10).map(async (item) => {
+      uniqueResults.map(async (item) => {
         try {
           const analysis = await analyzeContent(item.title + ' ' + item.content, query);
           return { ...item, analysis };

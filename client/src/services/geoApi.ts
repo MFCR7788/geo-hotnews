@@ -306,6 +306,7 @@ export interface NotificationItem {
   content: string
   isRead: boolean
   hotspotId?: string
+  hotspotUrl?: string
   createdAt: string
 }
 

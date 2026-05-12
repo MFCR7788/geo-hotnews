@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import PageHeader from '../../../components/ui/PageHeader'
+import GuideTabs from '../../../components/ui/GuideTabs'
 
 export default function SettingsApiView() {
   const navigate = useNavigate()
@@ -71,6 +72,7 @@ export default function SettingsApiView() {
           </button>
         </div>
       </div>
+        <GuideTabs />
     </div>
   )
 }

@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import PageHeader from '../../../components/ui/PageHeader'
+import GuideTabs from '../../../components/ui/GuideTabs'
 
 export default function SettingsProfileView() {
   const navigate = useNavigate()
@@ -21,45 +22,76 @@ export default function SettingsProfileView() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-3xl space-y-6">
       <PageHeader title="个人设置" subtitle="管理您的个人资料和账户信息" onBack={() => navigate('/geo/dashboard')} />
-      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
-        <div className="space-y-6">
+
+      {/* 个人资料 */}
+      <div
+        className="rounded-lg border p-6"
+        style={{
+          backgroundColor: '#ffffff',
+          borderColor: '#ebeef5',
+          boxShadow: '0 1px 4px rgba(0, 0, 0, 0.06)'
+        }}
+      >
+        <h3 className="text-base font-semibold mb-4" style={{ color: '#303133' }}>基本信息</h3>
+        <div className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">手机号</label>
+            <label className="block text-sm font-medium mb-2" style={{ color: '#606266' }}>
+              手机号
+            </label>
             <input
               value={form.phone}
               disabled
-              className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/10 rounded-lg text-gray-500 cursor-not-allowed"
+              className="w-full px-4 py-2.5 rounded cursor-not-allowed border"
+              style={{ backgroundColor: '#f5f7fa', borderColor: '#dcdfe6', color: '#909399' }}
             />
-            <p className="text-xs text-gray-500 mt-1">手机号不可修改，如需变更请联系管理员</p>
+            <p className="text-xs mt-1" style={{ color: '#909399' }}>
+              手机号不可修改，如需变更请联系管理员
+            </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">姓名</label>
+            <label className="block text-sm font-medium mb-2" style={{ color: '#606266' }}>
+              姓名
+            </label>
             <input
               value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               placeholder="输入您的姓名"
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-colors"
+              className="w-full px-4 py-2.5 rounded border focus:outline-none transition-all"
+              style={{
+                backgroundColor: '#ffffff',
+                borderColor: '#dcdfe6',
+                color: '#303133'
+              }}
+              onFocus={(e) => e.currentTarget.style.borderColor = '#409EFF'}
+              onBlur={(e) => e.currentTarget.style.borderColor = '#dcdfe6'}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">角色</label>
-            <div className="px-4 py-2.5 bg-white/[0.03] rounded-lg text-sm text-gray-400">
+            <label className="block text-sm font-medium mb-2" style={{ color: '#606266' }}>
+              角色
+            </label>
+            <div
+              className="px-4 py-2.5 rounded text-sm border"
+              style={{ backgroundColor: '#f5f7fa', borderColor: '#dcdfe6', color: '#909399' }}
+            >
               {form.role === 'admin' ? '👑 管理员' : '👤 成员'}
             </div>
           </div>
-          <div className="pt-4 border-t border-white/10">
+          <div className="pt-4 border-t" style={{ borderColor: '#ebeef5' }}>
             <button
               onClick={saveProfile}
               disabled={saving}
-              className="px-6 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-60 transition-colors"
+              className="px-6 py-2.5 rounded hover:opacity-90 disabled:opacity-60 transition-opacity text-white text-sm font-medium"
+              style={{ backgroundColor: '#409EFF' }}
             >
               {saving ? '保存中...' : '保存'}
             </button>
           </div>
         </div>
       </div>
+      <GuideTabs />
     </div>
   )
 }

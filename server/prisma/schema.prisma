@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -125,6 +125,9 @@ model Hotspot {
   userViews        UserHotspotView[]
 
   @@unique([url, source])
+  @@index([keywordId])
+  @@index([source, createdAt])
+  @@index([importance, createdAt])
 }
 
 model UserHotspotView {
@@ -149,6 +152,9 @@ model Notification {
   createdAt DateTime @default(now())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
 }
 
 model Setting {
@@ -239,6 +245,8 @@ model SmsCode {
   code      String
   expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@index([phone, code, expiresAt])
 }
 
 // ============================================================
@@ -269,20 +277,23 @@ model Content {
   templateId   String?
   title        String
   body         String?
-  formattedBody String? // 平台适配格式
-  platform     String   // douyin|xiaohongshu|weibo|zhihu|bilibili|all
+  formattedBody String?
+  platform     String
   industry     String?
   brandName    String?
-  keywords     String?  // JSON array string
-  status       String   @default("draft") // draft|published|archived
-  images       String?  // JSON array string
-  metadata     String?  // JSON object
+  keywords     String?
+  status       String   @default("draft")
+  images       String?
+  metadata     String?
   complianceScore Int?  @default(0)
   publishedAt  DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   template     ContentTemplate?  @relation(fields: [templateId], references: [id])
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
 }
 
 // 品牌知识库条目
@@ -322,6 +333,8 @@ model MonitorTask {
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   records      MonitorRecord[]
+
+  @@index([userId, isActive])
 }
 
 // 监测记录

@@ -58,26 +58,9 @@ function getHeatLevel(score: number): { label: string; color: string } {
 }
 
 function App() {
-  const { user, settings, isLoading, isLoggedIn, logout } = useAuth();
+  const { user, isLoading, isLoggedIn, logout } = useAuth();
   console.log('[App] Render - isLoading:', isLoading, 'isLoggedIn:', isLoggedIn, 'user:', user ? user.email : null);
   
-  // 应用主题
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('themeMode') || (settings?.themeMode || 'dark');
-    const html = document.documentElement;
-    const body = document.body;
-    if (savedTheme === 'dark') {
-      html.classList.add('dark');
-      html.classList.remove('light');
-      body.classList.add('dark');
-      body.classList.remove('light');
-    } else {
-      html.classList.add('light');
-      html.classList.remove('dark');
-      body.classList.add('light');
-      body.classList.remove('dark');
-    }
-  }, [settings]);
   const [authPage, setAuthPage] = useState<'login' | 'register' | 'forgot'>('login');
   const [showSettings, setShowSettings] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -92,6 +75,8 @@ function App() {
   
   const [newKeyword, setNewKeyword] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchRegion, setSearchRegion] = useState<'global' | 'china' | 'both'>('both');
+  const [resultsPerSource, setResultsPerSource] = useState<number>(5);
   // isLoading 来自 useAuth()，isDataLoading 为数据加载状态
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -139,7 +124,7 @@ function App() {
 
       const [keywordsData, hotspotsData, statsData, notifData] = await Promise.all([
         keywordsApi.getSubscribed(),
-        hotspotsApi.getAll(filterParams as any),
+        hotspotsApi.getAll(filterParams as Record<string, string | number>),
         hotspotsApi.getStats(),
         notificationsApi.getAll({ limit: 20 })
       ]);
@@ -319,7 +304,7 @@ function App() {
         ? await keywordsApi.subscribe({ keywordId })
         : await keywordsApi.subscribe({ text: newKeyword.trim() });
       
-      if ((result as any).alreadySubscribed) {
+      if ('alreadySubscribed' in result && result.alreadySubscribed) {
         setToastAndClear('该关键词已在监控列表中', 'error');
         setNewKeyword('');
         setSimilarKeywords([]);
@@ -345,8 +330,9 @@ function App() {
       if (selectedKeywordId === result.id) {
         loadKeywordHotspots(result.keywordId, 1);
       }
-    } catch (error: any) {
-      setToastAndClear(error.message || '添加失败', 'error');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '添加失败';
+      setToastAndClear(message, 'error');
     }
   };
 
@@ -356,7 +342,7 @@ function App() {
       await keywordsApi.unsubscribe(keywordId);
       setKeywords(prev => prev.filter(k => k.keywordId !== keywordId));
       setToastAndClear('已取消监控', 'success');
-    } catch (error) {
+    } catch {
       setToastAndClear('操作失败', 'error');
     }
   };
@@ -366,7 +352,7 @@ function App() {
     try {
       const updated = await keywordsApi.toggle(id);
       setKeywords(prev => prev.map(k => k.id === id ? { ...k, isActive: updated.isActive } : k));
-    } catch (error) {
+    } catch {
       setToastAndClear('操作失败', 'error');
     }
   };
@@ -393,8 +379,9 @@ function App() {
         setToastAndClear('该关键词已在监控列表中', 'error');
       }
       setSelectedLibraryKeyword('');
-    } catch (error: any) {
-      setToastAndClear(error.message || '添加失败', 'error');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '添加失败';
+      setToastAndClear(message, 'error');
     }
   };
 
@@ -405,10 +392,10 @@ function App() {
 
     setIsDataLoading(true);
     try {
-      const result = await hotspotsApi.search(searchQuery);
+      const result = await hotspotsApi.search(searchQuery, searchRegion, resultsPerSource);
       setSearchResults(result.results);
       setToastAndClear(`找到 ${result.results.length} 条结果`, 'success');
-    } catch (error) {
+    } catch {
       setToastAndClear('搜索失败', 'error');
     } finally {
       setIsDataLoading(false);
@@ -457,7 +444,7 @@ function App() {
   // ✅ 条件返回必须在所有hooks和函数定义之后
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#050510] flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f7fa] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
       </div>
     );
@@ -468,7 +455,6 @@ function App() {
       return (
         <LoginPage
           onSwitchToRegister={() => setAuthPage('register')}
-          onForgotPassword={() => setAuthPage('forgot')}
         />
       );
     }
@@ -544,7 +530,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050510] relative overflow-hidden">
+    <div className="min-h-screen bg-[#f5f7fa] relative overflow-hidden">
       {/* Background Effects */}
       <BackgroundBeams className="z-0" />
       <Spotlight className="-top-40 left-0 md:left-60 md:-top-20" fill="#3b82f6" />
@@ -574,7 +560,7 @@ function App() {
       </AnimatePresence>
 
       {/* Header - Minimal & Clean */}
-      <header className="sticky top-0 z-40 backdrop-blur-2xl bg-[#050510]/70 border-b border-white/5">
+      <header className="sticky top-0 z-40 backdrop-blur-2xl bg-[#f5f7fa]/70 border-b border-white/5">
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
@@ -644,7 +630,7 @@ function App() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.96 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 top-14 w-80 bg-[#0a0a1a]/95 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden z-50"
+                      className="absolute right-0 top-14 w-80 bg-[#ffffff]/95 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden z-50"
                     >
                       <div className="flex items-center justify-between p-4 border-b border-white/5">
                         <h3 className="font-medium text-white">通知</h3>
@@ -1319,7 +1305,7 @@ function App() {
                           initial={{ opacity: 0, y: -4 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -4 }}
-                          className="absolute bottom-full left-0 right-0 mb-2 bg-[#0c0c20]/95 backdrop-blur-2xl rounded-xl border border-purple-500/20 shadow-2xl shadow-purple-500/10 overflow-hidden z-50"
+                          className="absolute bottom-full left-0 right-0 mb-2 bg-[#ffffff]/95 backdrop-blur-2xl rounded-xl border border-purple-500/20 shadow-2xl shadow-purple-500/10 overflow-hidden z-50"
                         >
                           <div className="px-3 py-2 border-b border-white/5">
                             <span className="text-[10px] text-purple-400 font-medium flex items-center gap-1.5">
@@ -1504,7 +1490,7 @@ function App() {
           <div className="space-y-6">
             {/* Search Form */}
             <form onSubmit={handleSearch} className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
-              <div className="flex gap-3">
+              <div className="flex gap-3 items-center">
                 <div className="flex-1 relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600" />
                   <input
@@ -1515,6 +1501,25 @@ function App() {
                     className="w-full pl-12 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
                   />
                 </div>
+                <select
+                  value={searchRegion}
+                  onChange={(e) => setSearchRegion(e.target.value as 'global' | 'china' | 'both')}
+                  className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
+                >
+                  <option value="global" className="bg-gray-900">国际平台</option>
+                  <option value="china" className="bg-gray-900">国内平台</option>
+                  <option value="both" className="bg-gray-900">全部平台</option>
+                </select>
+                <select
+                  value={resultsPerSource}
+                  onChange={(e) => setResultsPerSource(parseInt(e.target.value))}
+                  className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
+                >
+                  <option value="3" className="bg-gray-900">每平台3条</option>
+                  <option value="5" className="bg-gray-900">每平台5条</option>
+                  <option value="8" className="bg-gray-900">每平台8条</option>
+                  <option value="10" className="bg-gray-900">每平台10条</option>
+                </select>
                 <motion.button 
                   type="submit" 
                   disabled={isDataLoading}
@@ -1523,11 +1528,16 @@ function App() {
                   className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-medium flex items-center gap-2 shadow-lg shadow-blue-500/25 disabled:opacity-50"
                 >
                   {isDataLoading ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      正在全网搜索...
+                    </>
                   ) : (
-                    <Search className="w-4 h-4" />
+                    <>
+                      <Search className="w-4 h-4" />
+                      搜索
+                    </>
                   )}
-                  搜索
                 </motion.button>
               </div>
             </form>

@@ -1,6 +1,6 @@
 // 认证中间件
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, TokenPayload } from '../utils/jwt.js';
+import { verifyToken, verifyTokenWithError, TokenPayload } from '../utils/jwt.js';
 import { prisma } from '../db.js';
 
 // 扩展 Express Request 类型
@@ -20,15 +20,19 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: '未提供认证 Token' });
+    res.status(401).json({ error: '未提供认证 Token', code: 'no_token' });
     return;
   }
 
   const token = authHeader.slice(7);
-  const payload = verifyToken(token);
+  const { payload, error } = verifyTokenWithError(token);
 
   if (!payload) {
-    res.status(401).json({ error: 'Token 无效或已过期' });
+    if (error === 'token_expired') {
+      res.status(401).json({ error: '登录已过期，请重新登录', code: 'token_expired' });
+    } else {
+      res.status(401).json({ error: '无效的认证 Token', code: 'token_invalid' });
+    }
     return;
   }
 
@@ -43,6 +47,21 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
   requireAuth(req, res, () => {
     if (req.user?.role !== 'admin') {
       res.status(403).json({ error: '需要管理员权限' });
+      return;
+    }
+    next();
+  });
+}
+
+/**
+ * GEO权限检查中间件
+ * 允许 admin 和 user 角色访问GEO相关功能
+ */
+export function requireGeoAccess(req: Request, res: Response, next: NextFunction): void {
+  requireAuth(req, res, () => {
+    const allowedRoles = ['admin', 'user'];
+    if (!allowedRoles.includes(req.user?.role || '')) {
+      res.status(403).json({ error: '无GEO功能访问权限' });
       return;
     }
     next();

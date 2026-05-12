@@ -8,6 +8,7 @@ import {
 import { adminApi, type User } from '../services/auth.js';
 import { subscriptionApi } from '../services/subscription.js';
 import { triggerHotspotCheck } from '../services/api.js';
+import GuideTabs from '../components/ui/GuideTabs'
 
 // 扩展 User 类型以包含 _count
 type AdminUser = User & { _count?: { keywords: number; notifications: number } };
@@ -50,7 +51,7 @@ interface AdminPayment {
 
 type TabType = 'users' | 'keywords' | 'subscriptions' | 'payments';
 
-export default function AdminPage({ onClose }: { onClose: () => void }) {
+export default function AdminPage({ onClose }: { onClose?: () => void }) {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [subscriptions, setSubscriptions] = useState<AdminSubscription[]>([]);
@@ -264,26 +265,26 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-[#0a0a1a] border border-slate-800 rounded-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
+        className="bg-[#ffffff] border border-gray-200 rounded-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
       >
         {/* 头部 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center">
               <Shield className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <h2 className="text-white font-semibold">管理后台</h2>
+              <h2 className="text-gray-900 font-semibold">管理后台</h2>
               <p className="text-slate-500 text-xs">GEO星擎 系统管理</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          {onClose && <button onClick={onClose} style={{ color: '#8E8E93', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>
+            ✕
+          </button>}
         </div>
 
         {/* Tab 切换 */}
-        <div className="flex gap-1 px-6 pt-4 border-b border-slate-800">
+        <div className="flex gap-1 px-6 pt-4 border-b border-gray-200">
           {[
             { id: 'users', label: '用户管理', icon: <Users className="w-4 h-4" /> },
             { id: 'keywords', label: '监控词管理', icon: <Zap className="w-4 h-4" /> },
@@ -295,8 +296,8 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
               onClick={() => { setTab(t.id as TabType); setPage(1); setSearch(''); }}
               className={`flex items-center gap-2 px-4 py-2 rounded-t-xl text-sm font-medium transition-colors ${
                 tab === t.id
-                  ? 'bg-slate-800/50 text-white border border-slate-700 border-b-transparent'
-                  : 'text-slate-500 hover:text-white hover:bg-white/5'
+                  ? 'bg-blue-50 text-gray-900 border border-gray-300 border-b-transparent'
+                  : 'text-slate-500 hover:text-gray-900 hover:bg-gray-100'
               }`}
             >
               {t.icon}
@@ -331,7 +332,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
                     <Zap className="w-5 h-5 text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-white font-medium">热点扫描</p>
+                    <p className="text-gray-900 font-medium">热点扫描</p>
                     <p className="text-slate-500 text-xs">
                       {lastScanTime ? `上次扫描: ${lastScanTime}` : '自动每30分钟扫描'}
                     </p>
@@ -369,13 +370,13 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="bg-[#050510] border border-slate-800 rounded-xl p-4"
+                  className="bg-gray-50 border border-gray-200 rounded-xl p-4"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-slate-500 text-xs">{stat.label}</span>
                     {stat.icon}
                   </div>
-                  <p className="text-2xl font-bold text-white">{stat.value.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-gray-900">{stat.value.toLocaleString()}</p>
                   <p className="text-slate-600 text-xs mt-1">{stat.sub}</p>
                 </motion.div>
               ))}
@@ -396,13 +397,13 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="bg-[#050510] border border-slate-800 rounded-xl p-4"
+                  className="bg-gray-50 border border-gray-200 rounded-xl p-4"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-slate-500 text-xs">{stat.label}</span>
                     {stat.icon}
                   </div>
-                  <p className="text-2xl font-bold text-white">{stat.value}</p>
+                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
                   <p className="text-slate-600 text-xs mt-1">{stat.sub}</p>
                 </motion.div>
               ))}
@@ -417,7 +418,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
                   <Zap className="w-5 h-5 text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-white font-medium">热点扫描</p>
+                  <p className="text-gray-900 font-medium">热点扫描</p>
                   <p className="text-slate-500 text-xs">
                     {lastScanTime ? `上次扫描: ${lastScanTime}` : '自动每30分钟扫描'}
                   </p>
@@ -456,7 +457,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="bg-[#050510] border border-slate-800 rounded-xl p-4"
+                  className="bg-gray-50 border border-gray-200 rounded-xl p-4"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-slate-500 text-xs">{stat.label}</span>
@@ -471,7 +472,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
 
           {/* 搜索栏 */}
           <div className="flex items-center justify-between">
-            <h3 className="text-white font-medium flex items-center gap-2">
+            <h3 className="text-gray-900 font-medium flex items-center gap-2">
               {tab === 'users' && <><BarChart3 className="w-4 h-4" /> 用户列表</>}
               {tab === 'keywords' && <><Zap className="w-4 h-4" /> 监控词列表</>}
               {tab === 'subscriptions' && <><Crown className="w-4 h-4" /> 订阅列表</>}
@@ -484,17 +485,17 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }}
                 placeholder={tab === 'users' ? "搜索邮箱/昵称..." : tab === 'keywords' ? "搜索监控词..." : "搜索邮箱..."}
-                className="bg-[#050510] border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-blue-500 w-64"
+                className="bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-4 py-2 text-gray-900 text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 w-64"
               />
             </div>
           </div>
 
           {/* 监控词列表 Tab */}
           {tab === 'keywords' && (
-            <div className="bg-[#050510] border border-slate-800 rounded-xl overflow-hidden">
+            <div className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-800">
+                  <tr className="border-b border-gray-200">
                     <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">监控词</th>
                     <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">分类</th>
                     <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">订阅数</th>
@@ -513,9 +514,9 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
                       <td colSpan={6} className="text-center py-8 text-slate-500 text-sm">暂无监控词</td>
                     </tr>
                   ) : keywords.map((k) => (
-                    <tr key={k.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
+                    <tr key={k.id} className="border-b border-gray-200/50 hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
-                        <span className="text-white text-sm font-medium">{k.text}</span>
+                        <span className="text-gray-900 text-sm font-medium">{k.text}</span>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-slate-400 text-xs">{k.category || '—'}</span>
@@ -537,7 +538,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
                             </span>
                           ))}
                           {(k.subscribers?.length || 0) > 3 && (
-                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs bg-slate-700/50 text-slate-400">
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs bg-gray-100 text-slate-400">
                               +{k.subscribers.length - 3}
                             </span>
                           )}
@@ -552,10 +553,10 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
 
           {/* 用户列表 Tab */}
           {tab === 'users' && (
-            <div className="bg-[#050510] border border-slate-800 rounded-xl overflow-hidden">
+            <div className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-800">
+                  <tr className="border-b border-gray-200">
                     <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">用户</th>
                     <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">角色</th>
                     <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">数据</th>
@@ -574,16 +575,16 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
                       <td colSpan={6} className="text-center py-8 text-slate-500 text-sm">暂无用户</td>
                     </tr>
                   ) : users.map((u) => (
-                    <tr key={u.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
+                    <tr key={u.id} className="border-b border-gray-200/50 hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
                         <div>
-                          <p className="text-white text-sm">{u.name || '—'}</p>
+                          <p className="text-gray-900 text-sm">{u.name || '—'}</p>
                           <p className="text-slate-500 text-xs">{u.email}</p>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
-                          u.role === 'admin' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700/50 text-slate-400'
+                          u.role === 'admin' ? 'bg-amber-500/20 text-amber-400' : 'bg-gray-100 text-slate-400'
                         }`}>
                           {u.role === 'admin' && <Crown className="w-3 h-3" />}
                           {u.role === 'admin' ? '管理员' : '用户'}
@@ -651,10 +652,10 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
 
           {/* 订阅列表 Tab */}
           {tab === 'subscriptions' && (
-            <div className="bg-[#050510] border border-slate-800 rounded-xl overflow-hidden">
+            <div className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-800">
+                  <tr className="border-b border-gray-200">
                     <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">用户</th>
                     <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">套餐</th>
                     <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">周期</th>
@@ -674,10 +675,10 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
                       <td colSpan={7} className="text-center py-8 text-slate-500 text-sm">暂无订阅</td>
                     </tr>
                   ) : subscriptions.map((s) => (
-                    <tr key={s.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
+                    <tr key={s.id} className="border-b border-gray-200/50 hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
                         <div>
-                          <p className="text-white text-sm">{s.userName || '—'}</p>
+                          <p className="text-gray-900 text-sm">{s.userName || '—'}</p>
                           <p className="text-slate-500 text-xs">{s.userEmail}</p>
                         </div>
                       </td>
@@ -739,10 +740,10 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
 
           {/* 订单流水 Tab */}
           {tab === 'payments' && (
-            <div className="bg-[#050510] border border-slate-800 rounded-xl overflow-hidden">
+            <div className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-800">
+                  <tr className="border-b border-gray-200">
                     <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">订单号</th>
                     <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">用户</th>
                     <th className="text-left px-4 py-3 text-slate-500 text-xs font-medium">套餐</th>
@@ -762,13 +763,13 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
                       <td colSpan={7} className="text-center py-8 text-slate-500 text-sm">暂无订单</td>
                     </tr>
                   ) : payments.map((p) => (
-                    <tr key={p.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
+                    <tr key={p.id} className="border-b border-gray-200/50 hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
                         <p className="text-slate-400 text-xs font-mono">{p.orderNo.slice(0, 16)}...</p>
                       </td>
                       <td className="px-4 py-3">
                         <div>
-                          <p className="text-white text-sm">{p.userName || '—'}</p>
+                          <p className="text-gray-900 text-sm">{p.userName || '—'}</p>
                           <p className="text-slate-500 text-xs">{p.userEmail}</p>
                         </div>
                       </td>
@@ -802,7 +803,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="px-3 py-1.5 rounded-lg bg-[#050510] border border-slate-700 text-slate-400 text-sm disabled:opacity-30 hover:border-slate-500 transition-colors"
+                className="px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-slate-400 text-sm disabled:opacity-30 hover:border-slate-500 transition-colors"
               >
                 上一页
               </button>
@@ -810,7 +811,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="px-3 py-1.5 rounded-lg bg-[#050510] border border-slate-700 text-slate-400 text-sm disabled:opacity-30 hover:border-slate-500 transition-colors"
+                className="px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-slate-400 text-sm disabled:opacity-30 hover:border-slate-500 transition-colors"
               >
                 下一页
               </button>
@@ -818,6 +819,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
           )}
         </div>
       </motion.div>
+      <GuideTabs />
     </div>
   );
 }

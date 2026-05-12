@@ -18,11 +18,17 @@ async function requestWithAuth<T>(endpoint: string, options: RequestInit = {}): 
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || error.message || 'Request failed');
+    const error = await response.json().catch(() => null);
+    const errorMsg = error?.error || error?.message || await response.text().catch(() => 'Request failed');
+    throw new Error(errorMsg);
   }
 
-  return response.json();
+  try {
+    return await response.json();
+  } catch {
+    const text = await response.text().catch(() => '');
+    throw new Error(text || 'Invalid response format');
+  }
 }
 
 // 套餐数据接口
@@ -103,11 +109,17 @@ async function requestPublic<T>(endpoint: string, options: RequestInit = {}): Pr
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || error.message || 'Request failed');
+    const error = await response.json().catch(() => null);
+    const errorMsg = error?.error || error?.message || await response.text().catch(() => 'Request failed');
+    throw new Error(errorMsg);
   }
 
-  return response.json();
+  try {
+    return await response.json();
+  } catch {
+    const text = await response.text().catch(() => '');
+    throw new Error(text || 'Invalid response format');
+  }
 }
 
 // 订阅 API

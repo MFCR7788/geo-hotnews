@@ -3,6 +3,7 @@
  */
 import { useNavigate } from 'react-router'
 import PageHeader from '../../../components/ui/PageHeader'
+import GuideTabs from '../../../components/ui/GuideTabs'
 
 const PLAN_FEATURES = [
   { name: '免费版', price: '¥0', features: ['GEO体检 5次/月', '内容生成 10篇/月', 'AI监测 3次/天', '视频生成 2个/月'] },
@@ -44,6 +45,7 @@ export default function SettingsSubscriptionView() {
       <div className="bg-white/[0.02] rounded-2xl border border-white/10 p-4 text-sm text-gray-500">
         当前方案：免费版 · 已用：GEO体检 2/5次，内容生成 5/10篇
       </div>
+      <GuideTabs />
     </div>
   )
 }

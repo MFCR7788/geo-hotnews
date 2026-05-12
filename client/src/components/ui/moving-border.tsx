@@ -9,15 +9,13 @@ export const MovingBorder = ({
   containerClassName,
   borderClassName,
   as: Component = "button",
-  ...otherProps
 }: {
   children: React.ReactNode;
   duration?: number;
   className?: string;
   containerClassName?: string;
   borderClassName?: string;
-  as?: any;
-  [key: string]: any;
+  as?: React.ElementType;
 }) => {
   return (
     <Component
@@ -25,7 +23,6 @@ export const MovingBorder = ({
         "relative h-auto w-auto overflow-hidden bg-transparent p-[1px] cursor-pointer",
         containerClassName
       )}
-      {...otherProps}
     >
       <div
         className={cn(

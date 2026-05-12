@@ -1,27 +1,26 @@
 /**
  * 策略库 - 营销策略管理
- * Tab1: 策略列表 + 创建
- * Tab2: 策略日历
  */
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { strategyApi } from '../../../services/geoApi'
 import type { Strategy } from '../../../services/geoApi'
-import PageHeader from '../../../components/ui/PageHeader'
-import { cn } from '../../../lib/utils'
+import GuideTabs from '../../../components/ui/GuideTabs'
+
+const APPLE_BLUE = '#007AFF'
+const APPLE_GREEN = '#34C759'
+const GRAY_900 = '#1C1C1E'
+const GRAY_600 = '#636366'
+const GRAY_500 = '#8E8E93'
+const GRAY_200 = '#E8E8ED'
+const WHITE = '#FFFFFF'
+const CARD_SHADOW = '0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)'
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
 const MONTHS = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
 
 function getDaysInMonth(year: number, month: number) { return new Date(year, month + 1, 0).getDate() }
 function getFirstDayOfMonth(year: number, month: number) { return new Date(year, month, 1).getDay() }
-
-const STATUS_COLOR: Record<string, { label: string; className: string }> = {
-  active: { label: '启用', className: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' },
-  draft: { label: '草稿', className: 'bg-white/10 text-gray-400 border border-white/10' },
-  paused: { label: '暂停', className: 'bg-amber-500/15 text-amber-400 border border-amber-500/20' },
-  completed: { label: '完成', className: 'bg-blue-500/15 text-blue-400 border border-blue-500/20' },
-}
 
 export default function StrategyView() {
   const navigate = useNavigate()
@@ -51,7 +50,6 @@ export default function StrategyView() {
       setStrategies(prev => [...prev, created])
       setShowCreate(false)
       setNewStrategy({ name: '', category: '', description: '' })
-      setActiveTab('list')
     } catch {} finally {
       setSubmitting(false)
     }
@@ -78,112 +76,166 @@ export default function StrategyView() {
     return new Date(d).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
   }
 
-  return (
-    <div className="p-6">
-      <PageHeader
-        title="策略库"
-        subtitle="营销策略管理与执行跟踪"
-        action={
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 bg-blue-500 text-white text-sm rounded-xl hover:bg-blue-600 transition-all"
-          >
-            + 创建策略
-          </button>
-        }
-      />
+  const cardStyle: React.CSSProperties = {
+    background: WHITE,
+    borderRadius: '16px',
+    boxShadow: CARD_SHADOW,
+    border: '1px solid rgba(0,0,0,0.04)'
+  }
 
-      <div className="flex gap-4 border-b border-white/5 mb-6">
+  return (
+    <div style={{ padding: '24px', background: '#F5F5F7', minHeight: '100%' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div>
+          <h3 style={{ fontSize: '17px', fontWeight: 600, color: GRAY_900, margin: 0 }}>策略库</h3>
+          <p style={{ fontSize: '13px', color: GRAY_500, margin: '2px 0 0 0' }}>营销策略管理与执行跟踪</p>
+        </div>
+        <button
+          onClick={() => setShowCreate(true)}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: 'none',
+            fontSize: '14px',
+            color: WHITE,
+            background: APPLE_BLUE,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          + 创建策略
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '4px', borderBottom: `1px solid ${GRAY_200}`, marginBottom: '24px' }}>
         {(['list', 'calendar'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={cn(
-              'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
-              activeTab === tab
-                ? 'border-blue-500 text-white'
-                : 'border-transparent text-slate-500 hover:text-slate-300'
-            )}
+            style={{
+              padding: '8px 20px',
+              fontSize: '14px',
+              fontWeight: activeTab === tab ? 600 : 400,
+              color: activeTab === tab ? GRAY_900 : GRAY_500,
+              borderBottom: `2px solid ${activeTab === tab ? APPLE_BLUE : 'transparent'}`,
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              transition: 'all 0.2s ease'
+            }}
           >
             {tab === 'list' ? '策略列表' : '策略日历'}
           </button>
         ))}
       </div>
 
+      {/* List Tab */}
       {activeTab === 'list' && (
-        <div className="rounded-2xl bg-white/[0.02] border border-white/5 overflow-hidden">
+        <div style={{ ...cardStyle, overflow: 'hidden' }}>
           {loading ? (
-            <div className="text-center py-16 text-slate-500">加载中...</div>
+            <div style={{ textAlign: 'center', padding: '64px 0', color: GRAY_500, fontSize: '14px' }}>加载中...</div>
           ) : strategies.length === 0 ? (
-            <div className="text-center py-16 text-slate-500">
-              <p className="mb-2">暂无策略</p>
-              <button onClick={() => setShowCreate(true)} className="text-blue-400 hover:text-blue-300 text-sm transition-colors">创建第一个策略 →</button>
+            <div style={{ textAlign: 'center', padding: '64px 0', color: GRAY_500 }}>
+              <p style={{ marginBottom: '12px', fontSize: '15px' }}>暂无策略</p>
+              <button onClick={() => setShowCreate(true)} style={{ color: APPLE_BLUE, fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit' }}>创建第一个策略 →</button>
             </div>
           ) : (
-            <table className="w-full">
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr className="border-b border-white/5">
-                  <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">策略标题</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider w-24">分类</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider w-24">状态</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider w-40">创建时间</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider w-20">操作</th>
+                <tr style={{ borderBottom: `1px solid ${GRAY_200}` }}>
+                  <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: '11px', fontWeight: 600, color: GRAY_500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>策略标题</th>
+                  <th style={{ textAlign: 'left', padding: '12px 20px', width: '96px', fontSize: '11px', fontWeight: 600, color: GRAY_500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>分类</th>
+                  <th style={{ textAlign: 'left', padding: '12px 20px', width: '90px', fontSize: '11px', fontWeight: 600, color: GRAY_500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>状态</th>
+                  <th style={{ textAlign: 'left', padding: '12px 20px', width: '160px', fontSize: '11px', fontWeight: 600, color: GRAY_500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>创建时间</th>
+                  <th style={{ textAlign: 'right', padding: '12px 20px', width: '80px', fontSize: '11px', fontWeight: 600, color: GRAY_500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>操作</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.03]">
-                {strategies.map(s => {
-                  const statusInfo = STATUS_COLOR[s.status || 'draft'] || STATUS_COLOR.draft
-                  return (
-                    <tr key={s.id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-white">{s.name}</td>
-                      <td className="px-6 py-4 text-sm text-slate-500">{s.category || '--'}</td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-medium ${statusInfo.className}`}>
-                          {statusInfo.label}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{formatDate(s.createdAt)}</td>
-                      <td className="px-6 py-4">
-                        <button onClick={() => navigate(`/geo/strategy/${s.id}`)} className="text-sm text-blue-400 hover:text-blue-300 transition-colors">详情</button>
-                      </td>
-                    </tr>
-                  )
-                })}
+              <tbody>
+                {strategies.map(s => (
+                  <tr key={s.id} style={{ borderBottom: `1px solid ${GRAY_200}`, transition: 'background-color 0.2s' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F5F5F7'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <td style={{ padding: '12px 20px', fontSize: '14px', fontWeight: 500, color: GRAY_900 }}>{s.name}</td>
+                    <td style={{ padding: '12px 20px', fontSize: '14px', color: GRAY_600 }}>{s.category || '--'}</td>
+                    <td style={{ padding: '12px 20px' }}>
+                      <span style={{
+                        display: 'inline-block', padding: '2px 8px', borderRadius: '6px',
+                        fontSize: '11px', fontWeight: 600,
+                        backgroundColor: s.status === 'active' ? 'rgba(52,199,89,0.10)' :
+                          s.status === 'paused' ? 'rgba(255,149,0,0.10)' :
+                          s.status === 'completed' ? 'rgba(0,122,255,0.10)' : 'rgba(142,142,147,0.10)',
+                        color: s.status === 'active' ? APPLE_GREEN :
+                          s.status === 'paused' ? '#FF9500' :
+                          s.status === 'completed' ? APPLE_BLUE : GRAY_500
+                      }}>
+                        {s.status === 'active' ? '启用' : s.status === 'paused' ? '暂停' : s.status === 'completed' ? '完成' : '草稿'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 20px', fontSize: '13px', color: GRAY_500 }}>{formatDate(s.createdAt)}</td>
+                    <td style={{ padding: '12px 20px', textAlign: 'right' }}>
+                      <button onClick={() => navigate(`/geo/strategy/${s.id}`)} style={{
+                        fontSize: '13px', color: APPLE_BLUE, cursor: 'pointer',
+                        fontFamily: 'inherit', background: 'none', border: 'none'
+                      }}>详情</button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           )}
         </div>
       )}
 
+      {/* Calendar Tab */}
       {activeTab === 'calendar' && (
-        <div className="rounded-2xl bg-white/[0.02] border border-white/5 overflow-hidden">
-          <div className="flex items-center justify-between p-4 border-b border-white/5">
-            <button onClick={prevMonth} className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-300 hover:bg-white/10 transition-all">← 上月</button>
-            <h3 className="text-base font-semibold text-white">{currentYear}年 {MONTHS[currentMonth]}</h3>
-            <button onClick={nextMonth} className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-300 hover:bg-white/10 transition-all">下月 →</button>
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: `1px solid ${GRAY_200}` }}>
+            <button onClick={prevMonth} style={{
+              padding: '6px 12px', borderRadius: '8px', border: `1px solid ${GRAY_200}`,
+              fontSize: '13px', color: GRAY_600, background: WHITE, cursor: 'pointer',
+              fontFamily: 'inherit', transition: 'all 0.2s ease'
+            }}>← 上月</button>
+            <span style={{ fontSize: '15px', fontWeight: 600, color: GRAY_900 }}>{currentYear}年 {MONTHS[currentMonth]}</span>
+            <button onClick={nextMonth} style={{
+              padding: '6px 12px', borderRadius: '8px', border: `1px solid ${GRAY_200}`,
+              fontSize: '13px', color: GRAY_600, background: WHITE, cursor: 'pointer',
+              fontFamily: 'inherit', transition: 'all 0.2s ease'
+            }}>下月 →</button>
           </div>
-          <div className="grid grid-cols-7 border-b border-white/5">
-            {WEEKDAYS.map(d => <div key={d} className="text-center py-2 text-xs font-medium text-slate-600">星期{d}</div>)}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: `1px solid ${GRAY_200}` }}>
+            {WEEKDAYS.map(d => <div key={d} style={{ textAlign: 'center', padding: '8px 4px', fontSize: '11px', fontWeight: 600, color: GRAY_500 }}>星期{d}</div>)}
           </div>
-          <div className="grid grid-cols-7">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
             {Array.from({ length: firstDay }).map((_, i) => (
-              <div key={`empty-${i}`} className="min-h-20 border-b border-r border-white/[0.03] p-1 bg-white/[0.01]" />
+              <div key={`empty-${i}`} style={{ minHeight: '80px', borderBottom: `1px solid ${GRAY_200}`, borderRight: `1px solid ${GRAY_200}`, padding: '4px', background: '#FAFAFA' }} />
             ))}
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1
               const events = getEventsForDay(day)
               const isToday = today.getFullYear() === currentYear && today.getMonth() === currentMonth && today.getDate() === day
               return (
-                <div key={day} className={`min-h-20 border-b border-r border-white/[0.03] p-1 ${isToday ? 'bg-blue-500/5' : ''}`}>
-                  <div className={`text-xs font-medium mb-1 px-1 ${isToday ? 'text-blue-400' : 'text-slate-600'}`}>
+                <div key={day} style={{
+                  minHeight: '80px', borderBottom: `1px solid ${GRAY_200}`, borderRight: `1px solid ${GRAY_200}`,
+                  padding: '4px', background: isToday ? 'rgba(0,122,255,0.06)' : WHITE
+                }}>
+                  <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '4px', paddingLeft: '4px', color: isToday ? APPLE_BLUE : GRAY_600 }}>
                     {isToday ? `● ${day}` : day}
                   </div>
                   {events.slice(0, 2).map(e => (
-                    <div key={e.id} onClick={() => navigate(`/geo/strategy/${e.id}`)} className="text-[10px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 truncate cursor-pointer mb-0.5">
+                    <div key={e.id} onClick={() => navigate(`/geo/strategy/${e.id}`)} style={{
+                      fontSize: '11px', padding: '2px 6px', borderRadius: '4px',
+                      background: 'rgba(0,122,255,0.08)', color: APPLE_BLUE,
+                      cursor: 'pointer', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                    }}>
                       📋 {e.name?.slice(0, 10)}
                     </div>
                   ))}
-                  {events.length > 2 && <div className="text-[10px] text-slate-600 px-1">+{events.length - 2}</div>}
+                  {events.length > 2 && <div style={{ fontSize: '11px', color: GRAY_500, paddingLeft: '4px' }}>+{events.length - 2}</div>}
                 </div>
               )
             })}
@@ -191,57 +243,85 @@ export default function StrategyView() {
         </div>
       )}
 
+      {/* Create Dialog */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={e => e.target === e.currentTarget && setShowCreate(false)}>
-          <div className="rounded-2xl bg-[#0c0c20] border border-white/10 shadow-2xl w-full max-w-lg mx-4">
-            <div className="px-6 py-4 border-b border-white/5">
-              <h3 className="text-lg font-semibold text-white">创建策略</h3>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[70]" onClick={e => e.target === e.currentTarget && setShowCreate(false)}>
+          <div style={{
+            background: WHITE, borderRadius: '20px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            border: `1px solid ${GRAY_200}`, width: '100%', maxWidth: '480px', margin: '16px'
+          }}>
+            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${GRAY_200}` }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 600, color: GRAY_900, margin: 0 }}>创建策略</h3>
             </div>
-            <div className="p-6 space-y-4">
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">策略名称 <span className="text-red-400">*</span></label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: GRAY_600, marginBottom: '8px' }}>
+                  策略名称 <span style={{ color: '#FF3B30' }}>*</span>
+                </label>
                 <input
                   value={newStrategy.name}
                   onChange={e => setNewStrategy(s => ({ ...s, name: e.target.value }))}
                   placeholder="如：冲锋衣旺季抢占策略"
-                  className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm
-                             placeholder-slate-600
-                             focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20
-                             transition-all"
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: '10px',
+                    border: `1px solid ${GRAY_200}`, fontSize: '14px', color: GRAY_900,
+                    outline: 'none', fontFamily: 'inherit', background: '#F5F5F7',
+                    transition: 'border-color 0.2s, box-shadow 0.2s'
+                  }}
+                  onFocus={(e) => { e.target.style.borderColor = APPLE_BLUE; e.target.style.boxShadow = '0 0 0 3px rgba(0,122,255,0.12)' }}
+                  onBlur={(e) => { e.target.style.borderColor = GRAY_200; e.target.style.boxShadow = 'none' }}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">分类</label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: GRAY_600, marginBottom: '8px' }}>分类</label>
                 <input
                   value={newStrategy.category}
                   onChange={e => setNewStrategy(s => ({ ...s, category: e.target.value }))}
                   placeholder="如：seasonal/product/competitor/platform"
-                  className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm
-                             placeholder-slate-600
-                             focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20
-                             transition-all"
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: '10px',
+                    border: `1px solid ${GRAY_200}`, fontSize: '14px', color: GRAY_900,
+                    outline: 'none', fontFamily: 'inherit', background: '#F5F5F7',
+                    transition: 'border-color 0.2s, box-shadow 0.2s'
+                  }}
+                  onFocus={(e) => { e.target.style.borderColor = APPLE_BLUE; e.target.style.boxShadow = '0 0 0 3px rgba(0,122,255,0.12)' }}
+                  onBlur={(e) => { e.target.style.borderColor = GRAY_200; e.target.style.boxShadow = 'none' }}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">描述</label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: GRAY_600, marginBottom: '8px' }}>描述</label>
                 <textarea
                   value={newStrategy.description}
                   onChange={e => setNewStrategy(s => ({ ...s, description: e.target.value }))}
                   rows={3}
                   placeholder="策略详细描述（可选）"
-                  className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm
-                             placeholder-slate-600 resize-none
-                             focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20
-                             transition-all"
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: '10px',
+                    border: `1px solid ${GRAY_200}`, fontSize: '14px', color: GRAY_900,
+                    outline: 'none', resize: 'vertical', fontFamily: 'inherit', background: '#F5F5F7',
+                    transition: 'border-color 0.2s, box-shadow 0.2s'
+                  }}
+                  onFocus={(e) => { e.target.style.borderColor = APPLE_BLUE; e.target.style.boxShadow = '0 0 0 3px rgba(0,122,255,0.12)' }}
+                  onBlur={(e) => { e.target.style.borderColor = GRAY_200; e.target.style.boxShadow = 'none' }}
                 />
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-white/5 flex justify-end gap-3">
-              <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-gray-300 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all">取消</button>
+            <div style={{ padding: '16px 24px', borderTop: `1px solid ${GRAY_200}`, display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button onClick={() => setShowCreate(false)} style={{
+                padding: '8px 16px', fontSize: '14px', borderRadius: '8px',
+                border: `1px solid ${GRAY_200}`, color: GRAY_600, background: '#F5F5F7',
+                cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease'
+              }}>取消</button>
               <button
                 onClick={createStrategy}
                 disabled={submitting || !newStrategy.name.trim()}
-                className="px-4 py-2 text-sm text-white bg-blue-500 rounded-xl hover:bg-blue-600 disabled:opacity-50 transition-all"
+                style={{
+                  padding: '8px 16px', fontSize: '14px', borderRadius: '8px',
+                  border: 'none', color: WHITE, background: APPLE_BLUE,
+                  cursor: submitting ? 'not-allowed' : 'pointer',
+                  opacity: (!newStrategy.name.trim()) ? 0.4 : 1,
+                  fontFamily: 'inherit', transition: 'all 0.2s ease'
+                }}
               >
                 {submitting ? '创建中...' : '创建'}
               </button>
@@ -249,6 +329,7 @@ export default function StrategyView() {
           </div>
         </div>
       )}
+      <GuideTabs />
     </div>
   )
 }

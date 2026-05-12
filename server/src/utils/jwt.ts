@@ -68,6 +68,22 @@ export function verifyToken(token: string): TokenPayload | null {
 }
 
 /**
+ * 验证 Token 并返回详细结果
+ */
+export function verifyTokenWithError(token: string): { payload: TokenPayload | null; error?: string } {
+  try {
+    const secret = getJwtSecret();
+    const decoded = jwt.verify(token, secret) as TokenPayload;
+    return { payload: decoded };
+  } catch (error: any) {
+    if (error.name === 'TokenExpiredError') {
+      return { payload: null, error: 'token_expired' };
+    }
+    return { payload: null, error: 'token_invalid' };
+  }
+}
+
+/**
  * 创建一对 Token 并存入数据库
  */
 export async function createAuthTokens(user: { id: string; email: string; role: string }): Promise<AuthTokens> {

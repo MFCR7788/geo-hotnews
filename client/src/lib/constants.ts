@@ -21,3 +21,23 @@ export const GEO_LEVEL_CONFIG = [
   { min: 40, label: '一般', color: '#E6A23C', className: 'geo-fair' },
   { min: 0, label: '较差', color: '#F56C6C', className: 'geo-poor' },
 ]
+
+export interface FilterState {
+  source: string;
+  importance: string;
+  keywordId: string;
+  timeRange: string;
+  isReal: string;
+  sortBy: string;
+  sortOrder: string;
+}
+
+export const defaultFilterState: FilterState = {
+  source: '',
+  importance: '',
+  keywordId: '',
+  timeRange: '',
+  isReal: '',
+  sortBy: 'createdAt',
+  sortOrder: 'desc',
+};

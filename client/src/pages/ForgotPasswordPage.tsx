@@ -31,7 +31,7 @@ export default function ForgotPasswordPage({ onBack }: ForgotPasswordPageProps) 
   };
 
   return (
-    <div className="min-h-screen bg-[#050510] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#f5f7fa] flex items-center justify-center p-4">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
       </div>
@@ -47,7 +47,7 @@ export default function ForgotPasswordPage({ onBack }: ForgotPasswordPageProps) 
           <p className="text-slate-400 text-sm mt-1">输入注册邮箱，我们发送重置链接</p>
         </div>
 
-        <div className="bg-[#0a0a1a] border border-slate-800 rounded-2xl p-8 shadow-2xl">
+        <div className="bg-[#ffffff] border border-slate-800 rounded-2xl p-8 shadow-2xl">
           {sent ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -80,7 +80,7 @@ export default function ForgotPasswordPage({ onBack }: ForgotPasswordPageProps) 
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     placeholder="your@email.com"
-                    className="w-full bg-[#050510] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all"
+                    className="w-full bg-[#f5f7fa] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all"
                     autoFocus
                   />
                 </div>

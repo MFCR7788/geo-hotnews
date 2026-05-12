@@ -3,6 +3,7 @@
  */
 import { useNavigate } from 'react-router'
 import PageHeader from '../../../components/ui/PageHeader'
+import GuideTabs from '../../../components/ui/GuideTabs'
 
 export default function SettingsKnowledgeView() {
   const navigate = useNavigate()
@@ -27,6 +28,7 @@ export default function SettingsKnowledgeView() {
           <p className="text-xs text-gray-500">知识库分类管理功能开发中</p>
         </div>
       </div>
+        <GuideTabs />
     </div>
   )
 }

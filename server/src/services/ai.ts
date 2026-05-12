@@ -426,10 +426,9 @@ ${content.slice(0, 500)}`;
 export interface GeoAnalysisResult {
   overallScore: number;
   dimensions: {
-    awareness: number;
-    sentiment: number;
-    competitiveness: number;
-    opportunity: number;
+    aiVisibility: number;
+    contentCoverage: number;
+    structuredData: number;
   };
   summary: string;
   suggestions: string[];
@@ -456,20 +455,22 @@ export async function analyzeGeoReport(
   const systemPrompt = `你是一个GEO（Generative Engine Optimization）搜索引擎优化专家，擅长分析品牌在AI搜索引擎时代的可见度和内容覆盖情况。
 
 你的任务是：
-1. 评估品牌在各平台的内容覆盖情况
-2. 分析关键词在AI生成内容中的出现频率
-3. 评估品牌相对于竞品的竞争优势
-4. 识别内容优化机会
+1. 评估品牌在AI搜索引擎（如ChatGPT、文心一言、豆包等）中的可见度
+2. 分析品牌内容在各平台的覆盖率和质量
+3. 检查网站结构化数据（Schema.org、JSON-LD等）的实现情况
+4. 提供具体的优化建议
 
 评分标准：
-- 0-30分：很差，几乎无可见度
-- 31-60分：一般，有基础覆盖但不够
-- 61-80分：良好，有较好的AI可见度
-- 81-100分：优秀，在AI搜索中有很强存在感
+- AI可见度（0-100）：评估品牌在AI生成内容中被提及的概率
+- 内容覆盖（0-100）：评估品牌在各大平台的内容分布和覆盖情况
+- 结构化数据（0-100）：评估网站结构化数据的完整性和正确性
 
 请以JSON格式输出分析结果，包含：
 - overallScore: 综合得分（0-100）
-- dimensions: 四个维度的得分
+- dimensions: 三个维度的得分
+  - aiVisibility: AI可见度得分（0-100）
+  - contentCoverage: 内容覆盖得分（0-100）
+  - structuredData: 结构化数据得分（0-100）
 - summary: 总体评价（100字以内）
 - suggestions: 3-5条具体优化建议
 - keywordDetails: 关键词覆盖情况`;
@@ -501,16 +502,16 @@ ${competitors && competitors.length > 0 ? `- 竞品品牌：${competitors.join('
       return {
         overallScore: Math.min(100, Math.max(0, parsed.overallScore || 70)),
         dimensions: {
-          awareness: Math.min(100, Math.max(0, parsed.dimensions?.awareness || 70)),
-          sentiment: Math.min(100, Math.max(0, parsed.dimensions?.sentiment || 70)),
-          competitiveness: Math.min(100, Math.max(0, parsed.dimensions?.competitiveness || 70)),
-          opportunity: Math.min(100, Math.max(0, parsed.dimensions?.opportunity || 70)),
+          aiVisibility: Math.min(100, Math.max(0, parsed.dimensions?.aiVisibility || 70)),
+          contentCoverage: Math.min(100, Math.max(0, parsed.dimensions?.contentCoverage || 70)),
+          structuredData: Math.min(100, Math.max(0, parsed.dimensions?.structuredData || 70)),
         },
         summary: String(parsed.summary || 'GEO健康度分析完成').slice(0, 150),
         suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.slice(0, 5) : [
-          '增加各平台内容发布频率',
-          '强化品牌在专业领域的影响力',
-          '关注竞品动态，及时调整策略',
+          '增加各平台内容发布频率，提升AI可见度',
+          '优化网站结构化数据（Schema.org标记）',
+          '强化关键词在内容中的自然分布',
+          '关注竞品动态，及时调整GEO策略',
         ],
         keywordDetails: {
           total: keywords.length,
@@ -528,17 +529,16 @@ ${competitors && competitors.length > 0 ? `- 竞品品牌：${competitors.join('
   return {
     overallScore: baseScore,
     dimensions: {
-      awareness: baseScore - 5 + Math.floor(Math.random() * 10),
-      sentiment: baseScore + Math.floor(Math.random() * 10) - 5,
-      competitiveness: baseScore - 10 + Math.floor(Math.random() * 15),
-      opportunity: baseScore + Math.floor(Math.random() * 10) - 5,
+      aiVisibility: baseScore - 5 + Math.floor(Math.random() * 10),
+      contentCoverage: baseScore + Math.floor(Math.random() * 10) - 5,
+      structuredData: baseScore - 10 + Math.floor(Math.random() * 15),
     },
-    summary: `${brand}在${industry}行业的GEO表现一般，建议加强内容质量和平台覆盖，特别是在小红书和知乎等AI高频引用平台。`,
+    summary: `${brand}在${industry}行业的GEO表现一般，建议加强AI可见度优化和内容覆盖，特别是在小红书和知乎等AI高频引用平台。`,
     suggestions: [
-      `增加小红书平台的种草内容投放`,
-      `强化品牌在${industry}领域专业形象`,
-      `关注竞品动态，及时调整内容策略`,
-      `建议在知乎发布专业长文建立权威性`,
+      `增加各平台内容发布频率以提升AI可见度`,
+      `优化网站结构化数据（添加Schema.org标记）`,
+      `强化品牌在${industry}领域的关键词覆盖`,
+      `建议在知乎、小红书等平台建立专业形象`,
     ],
     keywordDetails: {
       total: keywords.length,

@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom'
 import {
-  Search, Video, BookOpen, BarChart3, Radio, FileText,
+  Search, Video, BookOpen, Radio, FileText,
   ArrowRight, Sparkles, Target, TrendingUp, Zap,
-  Shield, Eye, ListTodo, Clapperboard, CheckCircle2
+  ListTodo, Clapperboard, CheckCircle2
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import GuideTabs from '../../../components/ui/GuideTabs'
 
 // ========== 数据定义 ==========
 
@@ -62,55 +63,110 @@ const timeline = [
   { period: '1 年内', title: '行业影响力建立', desc: '成为 AI 搜索中的首选推荐品牌' },
 ]
 
+// ========== 样式常量 ==========
+
+const APPLE_BLUE = '#007AFF'
+const APPLE_GREEN = '#34C759'
+const APPLE_ORANGE = '#FF9500'
+const APPLE_RED = '#FF3B30'
+const APPLE_PURPLE = '#5856D6'
+const APPLE_TEAL = '#64D2FF'
+const GRAY_900 = '#1C1C1E'
+const GRAY_600 = '#636366'
+const GRAY_500 = '#8E8E93'
+const GRAY_200 = '#E8E8ED'
+const GRAY_300 = '#D2D2D7'
+const GRAY_100 = '#F5F5F7'
+const WHITE = '#FFFFFF'
+
+const styles = {
+  primaryGradient: `linear-gradient(135deg, ${APPLE_BLUE}, ${APPLE_PURPLE})`,
+  cardBg: WHITE,
+  cardBorder: GRAY_200,
+  textPrimary: GRAY_900,
+  textSecondary: GRAY_600,
+  textMuted: GRAY_500,
+  accentColor: APPLE_BLUE,
+  borderDefault: GRAY_300,
+}
+
 // ========== 子组件 ==========
 
 function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-indigo-700/20 border border-white/10 px-8 py-16 md:px-16 md:py-20 text-center">
+    <div 
+      className="relative overflow-hidden rounded-2xl px-6 py-12 md:px-12 md:py-16 lg:px-16 lg:py-20 text-center"
+      style={{
+        background: `linear-gradient(135deg, rgba(0,122,255,0.08), rgba(88,86,214,0.08), rgba(100,210,255,0.05))`,
+        border: `1px solid ${GRAY_200}`
+      }}
+    >
       {/* 装饰光效 */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -z-0" />
-      <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl -z-0" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-indigo-500/5 rounded-full blur-3xl -z-0" />
+      <div className="absolute top-0 left-1/4 w-80 h-80 rounded-full blur-3xl -z-10 md:w-96 md:h-96" style={{ backgroundColor: 'rgba(0,122,255,0.08)' }} />
+      <div className="absolute bottom-0 right-1/4 w-64 h-64 rounded-full blur-3xl -z-10 md:w-72 md:h-72" style={{ backgroundColor: 'rgba(88,86,214,0.06)' }} />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[350px] rounded-full blur-3xl -z-10 md:w-[600px] md:h-[400px]" style={{ backgroundColor: 'rgba(100,210,255,0.04)' }} />
 
       <div className="relative z-10 max-w-3xl mx-auto">
-        <h1 className="text-3xl md:text-5xl font-extrabold text-white mb-6 leading-tight">
+        <h1 className="text-2xl md:text-4xl lg:text-5xl font-extrabold mb-4 md:mb-6 leading-tight" style={{ color: styles.textPrimary }}>
           抓住 AI 搜索红利
           <br />
           让品牌被主动推荐
         </h1>
-        <p className="text-lg md:text-xl text-gray-300 mb-10 leading-relaxed max-w-2xl mx-auto">
+        <p className="text-base md:text-lg lg:text-xl mb-6 md:mb-8 leading-relaxed max-w-2xl mx-auto" style={{ color: styles.textSecondary }}>
           传统 SEO 正在失效，AI 搜索占比已超{' '}
-          <span className="font-bold text-yellow-400">40%</span> 且每月增长{' '}
-          <span className="font-bold text-yellow-400">5%</span>。
+          <span className="font-bold" style={{ color: styles.accentColor }}>40%</span> 且每月增长{' '}
+          <span className="font-bold" style={{ color: styles.accentColor }}>5%</span>。
           <br className="hidden sm:block" />
           用户不再点击链接，而是直接接受 AI 的答案。
         </p>
 
+        {/* Hero Image */}
+        <div className="mb-6 md:mb-8 rounded-xl overflow-hidden" style={{ height: '180px' }}>
+          <img
+            src="https://picsum.photos/1200/600"
+            alt="AI 搜索时代的品牌增长"
+            className="w-full h-full object-cover"
+            style={{ objectPosition: 'center' }}
+          />
+        </div>
+
         {/* 统计数据 */}
-        <div className="flex flex-wrap justify-center gap-8 mb-10">
+        <div className="flex flex-wrap justify-center gap-4 md:gap-8 mb-6 md:mb-10">
           {stats.map((s) => (
-            <div key={s.label} className="text-center">
-              <div className="text-3xl md:text-4xl font-extrabold text-white">{s.value}</div>
-              <div className="text-sm font-medium text-gray-300 mt-1">{s.label}</div>
-              <div className="text-xs text-slate-500 mt-0.5">{s.desc}</div>
+            <div key={s.label} className="text-center min-w-[80px] md:min-w-[100px]">
+              <div className="text-2xl md:text-3xl lg:text-4xl font-extrabold" style={{ color: styles.textPrimary }}>{s.value}</div>
+              <div className="text-xs md:text-sm font-bold mt-1" style={{ color: styles.textPrimary }}>{s.label}</div>
+              <div className="text-xs mt-0.5" style={{ color: styles.textMuted }}>{s.desc}</div>
             </div>
           ))}
         </div>
 
         {/* CTA 按钮 */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
           <button
             onClick={() => onNavigate('/geo/geo-check')}
-            className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-cyan-600 transition-all shadow-lg shadow-blue-500/25 hover:shadow-xl hover:-translate-y-0.5"
+            className="inline-flex items-center gap-2 px-6 py-3 md:px-8 md:py-3.5 font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-transparent"
+            style={{
+              background: styles.primaryGradient,
+              color: WHITE,
+              boxShadow: '0 4px 20px rgba(0,122,255,0.25)'
+            }}
+            aria-label="免费检测品牌 GEO 得分"
           >
-            <Search className="w-5 h-5" />
+            <Search className="w-4 h-4 md:w-5 md:h-5" />
             免费检测品牌 GEO 得分
           </button>
           <button
             onClick={() => onNavigate('/geo/content/generate')}
-            className="inline-flex items-center gap-2 px-8 py-3.5 bg-white/5 text-white font-semibold rounded-xl border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all hover:-translate-y-0.5"
+            className="inline-flex items-center gap-2 px-6 py-3 md:px-8 md:py-3.5 font-semibold rounded-xl border transition-all duration-300 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-transparent"
+            style={{
+              backgroundColor: WHITE,
+              color: GRAY_600,
+              borderColor: GRAY_300
+            }}
+            aria-label="体验 AI 内容生成"
           >
-            <Video className="w-5 h-5" />
+            <Video className="w-4 h-4 md:w-5 md:h-5" />
             体验 AI 内容生成
           </button>
         </div>
@@ -121,32 +177,41 @@ function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
 
 function ValueSection() {
   return (
-    <section className="mt-12">
-      <div className="text-center mb-10">
-        <h2 className="text-2xl md:text-3xl font-bold text-white">
+    <section className="mt-8 md:mt-12">
+      <div className="text-center mb-6 md:mb-10">
+        <h2 className="text-xl md:text-2xl lg:text-3xl font-bold" style={{ color: styles.textPrimary }}>
           GEO 星擎的三大核心价值
         </h2>
-        <p className="mt-2 text-gray-400 text-lg">
+        <p className="mt-2 text-sm md:text-base lg:text-lg" style={{ color: styles.textSecondary }}>
           不只是工具，是品牌在 AI 时代的战略转型
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         {values.map((v) => (
           <div
             key={v.title}
-            className="group bg-white/[0.02] rounded-2xl p-7 border border-white/5 hover:bg-white/[0.04] hover:border-white/10 hover:-translate-y-1 transition-all duration-300 text-center"
+            className="group rounded-2xl p-5 md:p-7 border hover:-translate-y-1 transition-all duration-300 text-center"
+            style={{
+              backgroundColor: styles.cardBg,
+              borderColor: styles.cardBorder
+            }}
           >
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center mb-5 mx-auto group-hover:scale-110 transition-transform">
-              <v.icon className="w-7 h-7 text-blue-400" />
+            <div 
+              className="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center mb-4 md:mb-5 mx-auto group-hover:scale-110 transition-transform duration-300"
+              style={{
+                background: 'linear-gradient(135deg, rgba(0,122,255,0.08), rgba(88,86,214,0.06))'
+              }}
+            >
+              <v.icon className="w-6 h-6 md:w-7 md:h-7" style={{ color: styles.accentColor }} />
             </div>
-            <h3 className="text-lg font-bold text-white mb-3">{v.title}</h3>
-            <p className="text-sm text-gray-400 mb-1 line-clamp-2">{v.desc}</p>
-            <p className="text-sm font-semibold text-blue-400 mb-4">{v.highlight}</p>
-            <ul className="space-y-2 text-left">
+            <h3 className="text-base md:text-lg font-bold mb-2 md:mb-3" style={{ color: styles.textPrimary }}>{v.title}</h3>
+            <p className="text-xs md:text-sm mb-1 line-clamp-2" style={{ color: styles.textSecondary }}>{v.desc}</p>
+            <p className="text-xs md:text-sm font-semibold mb-3 md:mb-4" style={{ color: styles.accentColor }}>{v.highlight}</p>
+            <ul className="space-y-1.5 md:space-y-2 text-left">
               {v.points.map((point) => (
-                <li key={point} className="flex items-start gap-2 text-sm text-gray-300">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                <li key={point} className="flex items-start gap-2 text-xs md:text-sm" style={{ color: styles.textSecondary }}>
+                  <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4 mt-0.5 flex-shrink-0" style={{ color: APPLE_GREEN }} />
                   {point}
                 </li>
               ))}
@@ -160,34 +225,52 @@ function ValueSection() {
 
 function StepsSection({ onNavigate }: { onNavigate: (path: string) => void }) {
   return (
-    <section className="mt-16">
-      <div className="text-center mb-10">
-        <h2 className="text-2xl md:text-3xl font-bold text-white">
+    <section className="mt-8 md:mt-16">
+      <div className="text-center mb-6 md:mb-10">
+        <h2 className="text-xl md:text-2xl lg:text-3xl font-bold" style={{ color: styles.textPrimary }}>
           五步快速开始，立即见效
         </h2>
-        <p className="mt-2 text-gray-400 text-lg">
+        <p className="mt-2 text-sm md:text-base lg:text-lg" style={{ color: styles.textSecondary }}>
           无需技术团队，可视化操作，小白也能上手
         </p>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2 md:space-y-3">
         {steps.map((step) => (
           <button
             key={step.num}
             onClick={() => onNavigate(step.route)}
-            className="w-full group flex items-center gap-5 p-5 bg-white/[0.02] rounded-xl border border-white/5 hover:bg-white/[0.04] hover:border-white/10 hover:shadow-lg transition-all duration-200 text-left"
+            className="w-full group flex items-center gap-3 md:gap-5 p-4 md:p-5 rounded-xl border hover:shadow-lg transition-all duration-200 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-transparent"
+            style={{
+              backgroundColor: styles.cardBg,
+              borderColor: styles.cardBorder
+            }}
+            aria-label={`步骤 ${step.num}: ${step.title}`}
           >
-            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/25">
-              <span className="text-white font-bold text-lg">{step.num}</span>
+            <div 
+              className="w-9 h-9 md:w-11 md:h-11 rounded-full flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-200 shadow-lg"
+              style={{
+                background: styles.primaryGradient,
+                boxShadow: '0 4px 15px rgba(0,122,255,0.25)'
+              }}
+            >
+              <span className="text-white font-bold text-sm md:text-lg">{step.num}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-white text-base">{step.title}</h3>
-              <p className="text-sm text-gray-400 mt-0.5 truncate">{step.desc}</p>
+              <h3 className="font-bold text-sm md:text-base" style={{ color: styles.textPrimary }}>{step.title}</h3>
+              <p className="text-xs md:text-sm mt-0.5 truncate" style={{ color: styles.textSecondary }}>{step.desc}</p>
             </div>
-            <span className="inline-flex px-3 py-1 text-xs font-medium text-blue-400 bg-blue-500/15 border border-blue-500/20 rounded-full whitespace-nowrap">
+            <span 
+              className="inline-flex px-2 py-0.5 md:px-3 md:py-1 text-xs font-medium rounded-full whitespace-nowrap"
+              style={{
+                color: APPLE_BLUE,
+                backgroundColor: 'rgba(0,122,255,0.10)',
+                border: `1px solid rgba(0,122,255,0.15)`
+              }}
+            >
               {step.tag}
             </span>
-            <ArrowRight className="w-5 h-5 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-1 transition-all flex-shrink-0" />
+            <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-all duration-200 flex-shrink-0" style={{ color: styles.textMuted }} />
           </button>
         ))}
       </div>
@@ -196,41 +279,62 @@ function StepsSection({ onNavigate }: { onNavigate: (path: string) => void }) {
 }
 
 function FeaturesGrid({ onNavigate }: { onNavigate: (path: string) => void }) {
-  const tagColors: Record<string, string> = {
-    '免费试用': 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
-    '核心基础': 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
-    '专业版': 'bg-blue-500/15 text-blue-400 border border-blue-500/20',
-    '增值功能': 'bg-purple-500/15 text-purple-400 border border-purple-500/20',
+  const tagStyles: Record<string, { bg: string; text: string; border: string }> = {
+    '免费试用': { bg: 'rgba(16,185,129,0.10)', text: '#10b981', border: 'rgba(16,185,129,0.15)' },
+    '核心基础': { bg: 'rgba(245,158,11,0.10)', text: '#f59e0b', border: 'rgba(245,158,11,0.15)' },
+    '专业版': { bg: 'rgba(0,122,255,0.10)', text: APPLE_BLUE, border: 'rgba(0,122,255,0.15)' },
+    '增值功能': { bg: 'rgba(139,92,246,0.10)', text: '#8b5cf6', border: 'rgba(139,92,246,0.15)' },
   }
 
   return (
-    <section className="mt-16">
-      <div className="text-center mb-10">
-        <h2 className="text-2xl md:text-3xl font-bold text-white">
+    <section className="mt-8 md:mt-16">
+      <div className="text-center mb-6 md:mb-10">
+        <h2 className="text-xl md:text-2xl lg:text-3xl font-bold" style={{ color: styles.textPrimary }}>
           核心功能，解决实际痛点
         </h2>
-        <p className="mt-2 text-gray-400 text-lg">
+        <p className="mt-2 text-sm md:text-base lg:text-lg" style={{ color: styles.textSecondary }}>
           不只是概念，是可执行、可量化的解决方案
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {features.map((f) => (
-          <button
-            key={f.title}
-            onClick={() => onNavigate(f.route)}
-            className="group text-center p-6 bg-white/[0.02] rounded-2xl border border-white/5 hover:bg-white/[0.04] hover:border-white/10 hover:-translate-y-1 hover:shadow-lg transition-all duration-300"
-          >
-            <div className="w-12 h-12 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center mb-4 mx-auto group-hover:scale-110 transition-transform">
-              <f.icon className="w-6 h-6 text-gray-300" />
-            </div>
-            <h3 className="font-bold text-white mb-2">{f.title}</h3>
-            <p className="text-sm text-gray-400 mb-4 line-clamp-2">{f.desc}</p>
-            <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${tagColors[f.tag] || 'bg-white/5 text-gray-400'}`}>
-              {f.tag}
-            </span>
-          </button>
-        ))}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+        {features.map((f) => {
+          const style = tagStyles[f.tag] || { bg: 'rgba(142,142,147,0.10)', text: GRAY_500, border: 'rgba(142,142,147,0.15)' }
+          return (
+            <button
+              key={f.title}
+              onClick={() => onNavigate(f.route)}
+              className="group text-center p-4 md:p-6 rounded-2xl border hover:-translate-y-1 hover:shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-transparent"
+              style={{
+                backgroundColor: styles.cardBg,
+                borderColor: styles.cardBorder
+              }}
+              aria-label={`${f.title}: ${f.desc}`}
+            >
+              <div 
+                className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center mb-3 md:mb-4 mx-auto group-hover:scale-110 transition-transform duration-300"
+                style={{
+                  backgroundColor: GRAY_100,
+                  border: `1px solid ${GRAY_200}`
+                }}
+              >
+                <f.icon className="w-5 h-5 md:w-6 md:h-6" style={{ color: styles.textSecondary }} />
+              </div>
+              <h3 className="font-bold text-sm md:text-base mb-1 md:mb-2" style={{ color: styles.textPrimary }}>{f.title}</h3>
+              <p className="text-xs md:text-sm mb-3 md:mb-4 line-clamp-2" style={{ color: styles.textSecondary }}>{f.desc}</p>
+              <span 
+                className="inline-block px-2 py-0.5 md:px-3 md:py-1 text-xs font-medium rounded-full"
+                style={{
+                  backgroundColor: `${style.bg}`,
+                  color: style.text,
+                  border: `1px solid ${style.border}`
+                }}
+              >
+                {f.tag}
+              </span>
+            </button>
+          )
+        })}
       </div>
     </section>
   )
@@ -238,53 +342,68 @@ function FeaturesGrid({ onNavigate }: { onNavigate: (path: string) => void }) {
 
 function TimelineSection({ onNavigate }: { onNavigate: (path: string) => void }) {
   return (
-    <section className="mt-16">
-      <div className="text-center mb-10">
-        <h2 className="text-2xl md:text-3xl font-bold text-white">
+    <section className="mt-8 md:mt-16">
+      <div className="text-center mb-6 md:mb-10">
+        <h2 className="text-xl md:text-2xl lg:text-3xl font-bold" style={{ color: styles.textPrimary }}>
           可量化的预期收益
         </h2>
-        <p className="mt-2 text-gray-400 text-lg">
+        <p className="mt-2 text-sm md:text-base lg:text-lg" style={{ color: styles.textSecondary }}>
           不只是感觉，是实实在在的数据增长
         </p>
       </div>
 
       {/* 时间线 */}
       <div className="max-w-2xl mx-auto space-y-0">
-        {timeline.map((item) => (
-          <div key={item.period} className="flex gap-5 py-6 border-b border-white/5 last:border-b-0">
-            <div className="w-24 flex-shrink-0 pt-0.5">
-              <span className="text-lg font-bold text-blue-400">{item.period}</span>
+        {timeline.map((item, index) => (
+          <div key={item.period} className="flex gap-3 md:gap-5 py-4 md:py-6 border-b last:border-b-0" style={{ borderColor: styles.cardBorder }}>
+            <div className="w-20 md:w-24 flex-shrink-0 pt-0.5">
+              <span className="text-base md:text-lg font-bold" style={{ color: styles.textPrimary }}>{item.period}</span>
+              {index < timeline.length - 1 && (
+                <div className="hidden md:block w-0.5 h-full bg-gradient-to-b from-blue-400 to-transparent mt-2 ml-2" />
+              )}
             </div>
             <div className="flex-1 pb-1">
-              <h4 className="text-lg font-semibold text-white">{item.title}</h4>
-              <p className="mt-1 text-gray-400">{item.desc}</p>
+              <h4 className="text-base md:text-lg font-bold" style={{ color: styles.textPrimary }}>{item.title}</h4>
+              <p className="mt-1 text-xs md:text-sm" style={{ color: styles.textSecondary }}>{item.desc}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* CTA 卡片 */}
-      <div className="mt-10 rounded-2xl bg-gradient-to-br from-blue-600/10 via-indigo-600/10 to-purple-600/10 border border-white/10 p-8 md:p-10 text-center">
-        <h3 className="text-xl md:text-2xl font-bold text-white mb-5">
+      <div 
+        className="mt-6 md:mt-10 rounded-2xl border p-6 md:p-8 lg:p-10 text-center"
+        style={{
+          background: `linear-gradient(135deg, rgba(0,122,255,0.08), rgba(88,86,214,0.06), rgba(100,210,255,0.04))`,
+          borderColor: GRAY_200
+        }}
+      >
+        <h3 className="text-lg md:text-xl lg:text-2xl font-bold mb-4 md:mb-5" style={{ color: styles.textPrimary }}>
           现在开始 GEO 优化的三大理由
         </h3>
-        <ul className="max-w-lg mx-auto space-y-3 mb-8 text-left">
+        <ul className="max-w-lg mx-auto space-y-2 md:space-y-3 mb-6 md:mb-8 text-left">
           {[
             { strong: '窗口期红利', text: '：AI 搜索刚兴起，竞争不激烈' },
             { strong: '成本最低时', text: '：越早开始，积累的品牌知识库价值越大' },
             { strong: '防御性布局', text: '：即使你现在不做，你的竞品可能已经在做' },
           ].map((item) => (
-            <li key={item.strong} className="flex items-start gap-2 text-gray-300 py-2 border-b border-white/5 last:border-b-0">
-              <span className="font-semibold text-blue-400 flex-shrink-0">{item.strong}</span>
-              <span>{item.text}</span>
+            <li key={item.strong} className="flex items-start gap-2 py-2 border-b last:border-b-0" style={{ borderColor: styles.cardBorder }}>
+              <span className="font-bold flex-shrink-0 text-sm md:text-base" style={{ color: styles.textPrimary }}>{item.strong}</span>
+              <span className="text-xs md:text-sm" style={{ color: styles.textSecondary }}>{item.text}</span>
             </li>
           ))}
         </ul>
         <button
           onClick={() => onNavigate('/geo/geo-check')}
-          className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-cyan-600 transition-all shadow-lg shadow-blue-500/25 hover:shadow-xl hover:-translate-y-0.5"
+          className="inline-flex items-center gap-2 px-6 py-3 md:px-8 md:py-3.5 font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-transparent"
+          style={{
+            background: styles.primaryGradient,
+            color: WHITE,
+            boxShadow: '0 4px 20px rgba(0,122,255,0.25)'
+          }}
+          aria-label="立即免费检测"
         >
-          <Sparkles className="w-5 h-5" />
+          <Sparkles className="w-4 h-4 md:w-5 md:h-5" />
           立即免费检测
         </button>
       </div>
@@ -308,24 +427,29 @@ export default function GuideView() {
 
   if (!mounted) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-64" aria-label="页面加载中">
         <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="flex justify-center bg-[#050510] min-h-[calc(100vh-3rem)] py-8 overflow-auto">
-      <div className="w-full max-w-4xl px-6">
-        <HeroSection onNavigate={handleNavigate} />
-        <ValueSection />
-        <StepsSection onNavigate={handleNavigate} />
-        <FeaturesGrid onNavigate={handleNavigate} />
-        <TimelineSection onNavigate={handleNavigate} />
+    <div style={{ 
+      maxWidth: '1200px', 
+      margin: '0 auto', 
+      padding: '0 20px 60px',
+      backgroundColor: GRAY_100
+    }}>
+      <HeroSection onNavigate={handleNavigate} />
+      <ValueSection />
+      <StepsSection onNavigate={handleNavigate} />
+      <FeaturesGrid onNavigate={handleNavigate} />
+      <TimelineSection onNavigate={handleNavigate} />
 
-        {/* 底部间距 */}
-        <div className="h-12" />
-      </div>
+      {/* 底部间距 */}
+      <div style={{ height: '40px' }} />
+
+      <GuideTabs />
     </div>
   )
 }

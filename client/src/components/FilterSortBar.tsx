@@ -6,26 +6,10 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { UserKeyword } from '../services/api';
+import { defaultFilterState, type FilterState } from '../lib/constants';
 
-export interface FilterState {
-  source: string;
-  importance: string;
-  keywordId: string;
-  timeRange: string;
-  isReal: string;
-  sortBy: string;
-  sortOrder: string;
-}
-
-export const defaultFilterState: FilterState = {
-  source: '',
-  importance: '',
-  keywordId: '',
-  timeRange: '',
-  isReal: '',
-  sortBy: 'createdAt',
-  sortOrder: 'desc',
-};
+export type { FilterState } from '../lib/constants';
+export { defaultFilterState } from '../lib/constants';
 
 interface FilterSortBarProps {
   filters: FilterState;
@@ -115,7 +99,7 @@ function Dropdown({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 4, scale: 0.96 }}
               transition={{ duration: 0.15 }}
-              className="absolute left-0 top-full mt-1 z-50 min-w-[160px] bg-[#0d0d20]/98 backdrop-blur-xl rounded-xl border border-white/10 shadow-2xl overflow-hidden"
+              className="absolute left-0 top-full mt-1 z-50 min-w-[160px] bg-[#ffffff]/98 backdrop-blur-xl rounded-xl border border-white/10 shadow-2xl overflow-hidden"
             >
               {options.map((option) => (
                 <button

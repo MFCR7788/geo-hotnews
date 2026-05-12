@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import PageHeader from '../../../components/ui/PageHeader'
+import GuideTabs from '../../../components/ui/GuideTabs'
 
 export default function SettingsTenantView() {
   const navigate = useNavigate()
@@ -19,7 +20,7 @@ export default function SettingsTenantView() {
   return (
     <div className="p-6 max-w-2xl">
       <PageHeader title="企业设置" subtitle="管理企业信息和品牌配置" onBack={() => navigate('/geo/dashboard')} />
-      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+      <div className="rounded-2xl border p-6" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
         <div className="space-y-6">
           {[
             { label: '企业名称', key: 'name', placeholder: '输入企业名称' },
@@ -28,26 +29,32 @@ export default function SettingsTenantView() {
             { label: '品牌名称', key: 'brandName', placeholder: '输入品牌名称' },
           ].map(field => (
             <div key={field.key}>
-              <label className="block text-sm font-medium text-gray-300 mb-2">{field.label}</label>
+              <label className="block text-base font-bold text-gray-900 mb-2">{field.label}</label>
               <input
                 value={(form as any)[field.key]}
                 disabled={field.key === 'name'}
                 placeholder={field.placeholder}
-                className="w-full px-4 py-2.5 border border-white/10 rounded-xl bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all ${
+                  field.key === 'name' 
+                    ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' 
+                    : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+                }`}
               />
             </div>
           ))}
-          <div className="pt-4 border-t border-white/10">
+          <div className="pt-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
             <button
               onClick={saveTenant}
               disabled={saving}
-              className="px-6 py-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 disabled:opacity-60 transition-colors"
+              className="px-6 py-2.5 rounded-xl disabled:opacity-60 transition-colors"
+              style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--text-on-accent)' }}
             >
               {saving ? '保存中...' : '保存'}
             </button>
           </div>
         </div>
       </div>
+      <GuideTabs />
     </div>
   )
 }

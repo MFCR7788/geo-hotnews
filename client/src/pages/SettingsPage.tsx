@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   User, Lock, Upload, Palette, Globe, Bell,
@@ -6,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { authApi, type UserSettings } from '../services/auth.js';
+import GuideTabs from '../components/ui/GuideTabs'
 
 const SOURCES = [
   { key: 'twitter', label: 'Twitter/X' },
@@ -37,14 +39,22 @@ const SECTIONS: Section[] = [
   { id: 'security', label: '安全设置', icon: <Lock className="w-4 h-4" /> },
 ];
 
-export default function SettingsPage({ onClose }: { onClose: () => void }) {
+export default function SettingsPage({ onClose }: { onClose?: () => void }) {
+  const navigate = useNavigate();
   const { user, settings, updateSettings, refreshUser } = useAuth();
   const [activeSection, setActiveSection] = useState('profile');
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 表单状态
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      navigate(-1);
+    }
+  };
+
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [oldPassword, setOldPassword] = useState('');
@@ -66,7 +76,6 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
     setTimeout(() => setFeedback(null), 3000);
   };
 
-  // 上传 Logo 到 ImgBB
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -83,9 +92,12 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
         headers: { Authorization: `Bearer ${localStorage.getItem('mfcr_access_token')}` },
         body: formData
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '上传失败');
-      setLogoUrl(data.url);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const errorMsg = data?.error || await res.text().catch(() => '上传失败');
+        throw new Error(errorMsg);
+      }
+      setLogoUrl(data?.url);
       showFeedback('success', 'Logo 上传成功');
     } catch (err: any) {
       showFeedback('error', err.message || '上传失败');
@@ -139,7 +151,6 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
       await refreshUser();
       showFeedback('success', '设置已保存');
       
-      // 应用主题到HTML
       const html = document.documentElement;
       if (themeMode === 'dark') {
         html.classList.add('dark');
@@ -148,7 +159,6 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
         html.classList.add('light');
         html.classList.remove('dark');
       }
-      // 保存主题到localStorage供下次使用
       localStorage.setItem('themeMode', themeMode);
     } catch (err: any) {
       showFeedback('error', err.message || '保存失败');
@@ -174,7 +184,7 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
             value={email}
             onChange={e => setEmail(e.target.value)}
             placeholder="您的邮箱"
-            className="w-full bg-[#050510] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-all"
+            className="w-full bg-[#f5f7fa] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-all"
           />
         </div>
         <div>
@@ -184,7 +194,7 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="您的昵称"
-            className="w-full bg-[#050510] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-all"
+            className="w-full bg-[#f5f7fa] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-all"
           />
         </div>
         <div>
@@ -205,16 +215,16 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
           {saving ? '保存中...' : '保存资料'}
         </button>
       </div>
-    ),
+    )
+  ,
 
-    logo: (
+  logo: (
       <div className="space-y-5">
         <h3 className="text-white font-medium">Logo 定制</h3>
         <p className="text-slate-500 text-sm">上传您自己的 Logo，替换左上角的品牌图标。</p>
         
-        {/* 预览 */}
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-xl bg-[#050510] border border-slate-700 flex items-center justify-center overflow-hidden">
+          <div className="w-16 h-16 rounded-xl bg-[#f5f7fa] border border-slate-700 flex items-center justify-center overflow-hidden">
             {logoUrl ? (
               <img src={logoUrl} alt="logo" className="w-full h-full object-contain" />
             ) : (
@@ -241,7 +251,7 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={logoUploading}
-          className="flex items-center gap-2 bg-[#050510] border border-slate-700 hover:border-blue-500 text-slate-300 hover:text-white px-5 py-3 rounded-xl text-sm transition-all"
+          className="flex items-center gap-2 bg-[#f5f7fa] border border-slate-700 hover:border-blue-500 text-slate-300 hover:text-white px-5 py-3 rounded-xl text-sm transition-all"
         >
           <Upload className="w-4 h-4" />
           {logoUploading ? '上传中...' : '选择图片（≤2MB）'}
@@ -261,7 +271,6 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
       <div className="space-y-6">
         <h3 className="text-white font-medium">界面主题</h3>
         
-        {/* 深色/浅色 */}
         <div>
           <label className="block text-sm text-slate-400 mb-3">主题模式</label>
           <div className="flex gap-3">
@@ -275,7 +284,7 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
                 className={`flex items-center gap-2 px-5 py-3 rounded-xl border text-sm transition-all ${
                   themeMode === opt.value
                     ? 'bg-blue-500/20 border-blue-500 text-blue-400'
-                    : 'bg-[#050510] border-slate-700 text-slate-400 hover:border-slate-500'
+                    : 'bg-[#f5f7fa] border-slate-700 text-slate-400 hover:border-slate-500'
                 }`}
               >
                 {opt.icon}{opt.label}
@@ -284,7 +293,6 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {/* 主题色 */}
         <div>
           <label className="block text-sm text-slate-400 mb-3">主题色</label>
           <div className="flex flex-wrap gap-3">
@@ -306,7 +314,7 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
               value={themeColor}
               onChange={e => setThemeColor(e.target.value)}
               placeholder="#3b82f6"
-              className="bg-[#050510] border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm w-28 focus:outline-none focus:border-blue-500"
+              className="bg-[#f5f7fa] border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm w-28 focus:outline-none focus:border-blue-500"
             />
             <div className="w-8 h-8 rounded-lg" style={{ backgroundColor: themeColor }} />
           </div>
@@ -334,7 +342,7 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
               className={`flex items-center justify-between px-4 py-3 rounded-xl border text-sm transition-all ${
                 selectedSources.includes(s.key)
                   ? 'bg-blue-500/10 border-blue-500/50 text-blue-400'
-                  : 'bg-[#050510] border-slate-700 text-slate-400 hover:border-slate-500'
+                  : 'bg-[#f5f7fa] border-slate-700 text-slate-400 hover:border-slate-500'
               }`}
             >
               <span>{s.label}</span>
@@ -361,7 +369,7 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
             { key: 'notifyWeb', label: 'Web 通知', desc: '浏览器内实时推送', value: notifyWeb, setter: setNotifyWeb },
             { key: 'notifyHighOnly', label: '仅高优先级', desc: '只通知 urgent/high 级热点', value: notifyHighOnly, setter: setNotifyHighOnly },
           ].map(item => (
-            <div key={item.key} className="flex items-center justify-between bg-[#050510] border border-slate-800 rounded-xl px-4 py-4">
+            <div key={item.key} className="flex items-center justify-between bg-[#f5f7fa] border border-slate-800 rounded-xl px-4 py-4">
               <div>
                 <p className="text-white text-sm">{item.label}</p>
                 <p className="text-slate-500 text-xs mt-0.5">{item.desc}</p>
@@ -402,7 +410,7 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
                 onChange={e => field.setter(e.target.value)}
                 placeholder={field.placeholder}
                 autoComplete={field.autoComplete}
-                className="w-full bg-[#050510] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-all"
+                className="w-full bg-[#f5f7fa] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-all"
               />
             </div>
           ))}
@@ -420,14 +428,14 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={handleClose}>
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-[#0a0a1a] border border-slate-800 rounded-2xl w-full max-w-3xl max-h-[85vh] flex overflow-hidden shadow-2xl"
+        className="bg-[#ffffff] border border-slate-800 rounded-2xl w-full max-w-3xl max-h-[85vh] flex overflow-hidden shadow-2xl"
+        onClick={e => e.stopPropagation()}
       >
-        {/* 左侧导航 */}
-        <div className="w-48 bg-[#050510] border-r border-slate-800 p-4 flex flex-col">
+        <div className="w-48 bg-[#f5f7fa] border-r border-slate-800 p-4 flex flex-col">
           <div className="mb-6">
             <h2 className="text-white font-semibold text-sm px-2">账户设置</h2>
           </div>
@@ -449,23 +457,19 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
           </nav>
         </div>
 
-        {/* 右侧内容 */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* 头部 */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
             <div className="flex items-center gap-2 text-slate-400 text-sm">
               <span>设置</span>
               <ChevronRight className="w-3 h-3" />
               <span className="text-white">{SECTIONS.find(s => s.id === activeSection)?.label}</span>
             </div>
-            <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
+            <button onClick={handleClose} className="text-slate-500 hover:text-white transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* 内容区 */}
           <div className="flex-1 overflow-y-auto p-6">
-            {/* 反馈提示 */}
             {feedback && (
               <motion.div
                 initial={{ opacity: 0, y: -5 }}
@@ -492,6 +496,7 @@ export default function SettingsPage({ onClose }: { onClose: () => void }) {
           </div>
         </div>
       </motion.div>
+      <GuideTabs />
     </div>
   );
 }

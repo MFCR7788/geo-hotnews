@@ -6,7 +6,6 @@ import { useAuth } from '../context/AuthContext.js';
 
 interface LoginPageProps {
   onSwitchToRegister?: () => void;
-  onForgotPassword?: () => void;
 }
 
 export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
@@ -28,41 +27,30 @@ export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
     setError('');
     setSuccess('');
     try {
-      // 先检查手机号是否已注册
-      const checkRes = await fetch(`/api/auth/check-phone?phone=${encodeURIComponent(phone)}`);
-      const checkData = await checkRes.json();
-      if (!checkRes.ok) throw new Error(checkData.error || '检查失败');
-
-      if (!checkData.registered) {
-        setError('该手机号未注册，即将跳转到注册页面...');
-        setTimeout(() => onSwitchToRegister?.() ?? navigate('/register'), 1500);
-        return;
-      }
-
-      // 已注册，发送验证码
       const res = await fetch('/api/auth/send-sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '发送失败');
-
-      setSuccess('验证码已发送，请注意查收');
+      let data: any;
+      try { data = await res.json(); } catch {
+        const text = await res.text().catch(() => '');
+        if (!res.ok) throw new Error(text || '发送失败');
+        data = {};
+      }
+      if (!res.ok) throw new Error(data?.error || await res.text().catch(() => '发送失败'));
+      if (data.debugCode) {
+        setSuccess(`验证码已发送（测试环境）: ${data.debugCode}`);
+      } else {
+        setSuccess('验证码已发送，请注意查收');
+      }
       setTimeout(() => setSuccess(''), 3000);
-
       setCountdown(60);
       const timer = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
-        });
+        setCountdown(prev => { if (prev <= 1) { clearInterval(timer); return 0; } return prev - 1; });
       }, 1000);
     } catch (err: any) {
-      setError(err.message || '发送失败');
+      setError(err.message || '操作失败');
     } finally {
       setLoading(false);
     }
@@ -70,19 +58,12 @@ export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone || phone.length !== 11) {
-      setError('请输入正确的手机号');
-      return;
-    }
-    if (!code || code.length !== 6) {
-      setError('请输入6位验证码');
-      return;
-    }
+    if (!phone || phone.length !== 11) { setError('请输入正确的手机号'); return; }
+    if (!code || code.length !== 6) { setError('请输入6位验证码'); return; }
     setLoading(true);
     setError('');
     try {
       await loginWithSms(phone, code);
-      // 登录成功，跳转到操作说明页
       navigate('/guide');
     } catch (err: any) {
       setError(err.message || '登录失败');
@@ -91,75 +72,158 @@ export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
     }
   };
 
-  const inputClass = "w-full bg-[#050510] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all";
-
   return (
-    <div className="min-h-screen bg-[#050510] flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 left-1/3 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl" />
-      </div>
-
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px',
+      background: '#F5F5F7'
+    }}>
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="relative w-full max-w-md"
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        style={{ width: '100%', maxWidth: '400px' }}
       >
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 mb-4">
-            <img src="/logo.png" alt="GEO星擎" className="w-12 h-12 rounded-xl object-contain" />
-            <div className="text-left">
-              <h1 className="text-xl font-bold text-white">GEO星擎</h1>
-              <p className="text-xs text-slate-500">热点监控系统</p>
+        {/* Logo & Header */}
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+            style={{ marginBottom: '20px' }}
+          >
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '18px',
+              background: 'linear-gradient(135deg, #007AFF, #5856D6)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 8px 24px rgba(0,122,255,0.30)'
+            }}>
+              <img src="/logo.png" alt="GEO" style={{ width: '40px', height: '40px', borderRadius: '10px', objectFit: 'contain' }} />
             </div>
-          </div>
-          <p className="text-slate-400 text-sm">登录您的账户</p>
+          </motion.div>
+          <motion.h1
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.15 }}
+            style={{ fontSize: '34px', fontWeight: 700, color: '#1C1C1E', margin: '0 0 4px 0', letterSpacing: '-0.02em' }}
+          >
+            GEO星擎
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            style={{ fontSize: '17px', color: '#8E8E93', margin: 0 }}
+          >
+            欢迎回来
+          </motion.p>
         </div>
 
-        <div className="bg-[#0a0a1a] border border-slate-800 rounded-2xl p-8 shadow-2xl">
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label className="block text-sm text-slate-400 mb-2">手机号码</label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+        {/* Login Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.4 }}
+          style={{
+            background: '#FFFFFF',
+            borderRadius: '20px',
+            padding: '28px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)',
+            border: '1px solid rgba(0,0,0,0.04)'
+          }}
+        >
+          <form onSubmit={handleLogin}>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#636366', marginBottom: '8px' }}>
+                手机号码
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Phone size={16} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#AEAEB2', zIndex: 1 }} />
                 <input
                   type="tel"
                   value={phone}
                   onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
                   placeholder="请输入手机号"
-                  className={inputClass}
                   maxLength={11}
+                  style={{
+                    width: '100%',
+                    height: '48px',
+                    padding: '0 16px 0 44px',
+                    background: '#FAFAFA',
+                    border: '1px solid #D2D2D7',
+                    borderRadius: '12px',
+                    fontSize: '15px',
+                    color: '#1C1C1E',
+                    outline: 'none',
+                    transition: 'all 0.15s ease',
+                    fontFamily: 'inherit',
+                    boxSizing: 'border-box'
+                  }}
+                  onFocus={e => { e.target.style.borderColor = '#007AFF'; e.target.style.boxShadow = '0 0 0 4px rgba(0,122,255,0.12)'; e.target.style.background = '#FFFFFF' }}
+                  onBlur={e => { e.target.style.borderColor = '#D2D2D7'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFAFA' }}
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm text-slate-400 mb-2">验证码</label>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <div style={{ marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#636366', marginBottom: '8px' }}>
+                验证码
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Clock size={16} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#AEAEB2', zIndex: 1 }} />
                 <input
                   type="text"
                   value={code}
                   onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="请输入验证码"
-                  className={inputClass.replace('pr-4', 'pr-36')}
                   maxLength={6}
+                  style={{
+                    width: '100%',
+                    height: '48px',
+                    padding: '0 120px 0 44px',
+                    background: '#FAFAFA',
+                    border: '1px solid #D2D2D7',
+                    borderRadius: '12px',
+                    fontSize: '15px',
+                    color: '#1C1C1E',
+                    outline: 'none',
+                    transition: 'all 0.15s ease',
+                    fontFamily: 'inherit',
+                    boxSizing: 'border-box'
+                  }}
+                  onFocus={e => { e.target.style.borderColor = '#007AFF'; e.target.style.boxShadow = '0 0 0 4px rgba(0,122,255,0.12)'; e.target.style.background = '#FFFFFF' }}
+                  onBlur={e => { e.target.style.borderColor = '#D2D2D7'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFAFA' }}
                 />
                 <button
                   type="button"
                   onClick={handleSendCode}
                   disabled={countdown > 0 || loading}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 text-white text-xs px-4 py-2 rounded-lg transition-all flex items-center gap-1"
+                  style={{
+                    position: 'absolute',
+                    right: '6px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    padding: countdown > 0 ? '8px 14px' : '8px 16px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: countdown > 0 ? '#F5F5F7' : '#007AFF',
+                    color: countdown > 0 ? '#8E8E93' : '#FFFFFF',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: countdown > 0 || loading ? 'default' : 'pointer',
+                    fontFamily: 'inherit',
+                    opacity: loading ? 0.5 : 1,
+                    transition: 'all 0.15s ease'
+                  }}
                 >
-                  {countdown > 0 ? (
-                    <>
-                      <Clock className="w-3 h-3" />
-                      {countdown}s
-                    </>
-                  ) : (
-                    '获取验证码'
-                  )}
+                  {countdown > 0 ? `${countdown}s` : '获取验证码'}
                 </button>
               </div>
             </div>
@@ -168,10 +232,20 @@ export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
               <motion.div
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '12px 16px',
+                  borderRadius: '12px',
+                  background: 'rgba(52,199,89,0.10)',
+                  color: '#34C759',
+                  fontSize: '14px',
+                  marginTop: '12px'
+                }}
               >
-                <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <span className="text-emerald-400 text-sm">{success}</span>
+                <CheckCircle size={16} style={{ flexShrink: 0 }} />
+                <span>{success}</span>
               </motion.div>
             )}
 
@@ -179,39 +253,85 @@ export default function LoginPage({ onSwitchToRegister }: LoginPageProps) {
               <motion.div
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '12px 16px',
+                  borderRadius: '12px',
+                  background: 'rgba(255,59,48,0.10)',
+                  color: '#FF3B30',
+                  fontSize: '14px',
+                  marginTop: '12px'
+                }}
               >
-                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                <span className="text-red-400 text-sm">{error}</span>
+                <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                <span>{error}</span>
               </motion.div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+              style={{
+                width: '100%',
+                height: '48px',
+                border: 'none',
+                borderRadius: '12px',
+                background: '#007AFF',
+                color: '#FFFFFF',
+                fontSize: '16px',
+                fontWeight: 600,
+                cursor: loading ? 'default' : 'pointer',
+                opacity: loading ? 0.6 : 1,
+                transition: 'all 0.15s ease',
+                marginTop: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                fontFamily: 'inherit',
+                boxShadow: '0 2px 8px rgba(0,122,255,0.25)'
+              }}
+              onMouseEnter={e => { if (!loading) { e.currentTarget.style.transform = 'scale(1.02)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,122,255,0.30)' }}}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,122,255,0.25)' }}
             >
               {loading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div style={{ width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#FFFFFF', borderRadius: '50%', animation: 'apple-spin 0.8s linear infinite' }} />
               ) : (
                 <>
-                  <Zap className="w-4 h-4" />
+                  <Zap size={16} />
                   登录
                 </>
               )}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-slate-500">
-            还没有账户？
-            <button
-              onClick={() => onSwitchToRegister?.() ?? navigate('/register')}
-              className="text-blue-400 hover:text-blue-300 transition-colors ml-1"
-            >
-              立即注册
-            </button>
+          <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            <span style={{ fontSize: '14px', color: '#8E8E93' }}>
+              还没有账户？
+              <button
+                onClick={() => onSwitchToRegister?.() ?? navigate('/register')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#007AFF',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  marginLeft: '4px'
+                }}
+              >
+                立即注册
+              </button>
+            </span>
           </div>
-        </div>
+        </motion.div>
+
+        <p style={{ textAlign: 'center', fontSize: '12px', color: '#AEAEB2', marginTop: '24px' }}>
+          登录即表示您同意我们的服务条款和隐私政策
+        </p>
       </motion.div>
     </div>
   );

@@ -1,12 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../db.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireGeoAccess } from '../middleware/auth.js';
 import { analyzeGeoReport } from '../services/ai.js';
 
 const router = Router();
 
 // GET /api/geo-check/reports
-router.get('/reports', requireAuth, async (req: Request, res: Response) => {
+router.get('/reports', requireGeoAccess, async (req: Request, res: Response) => {
   try {
     const { page = '1', limit = '20' } = req.query;
     const pageNum = parseInt(String(page));
@@ -29,7 +29,7 @@ router.get('/reports', requireAuth, async (req: Request, res: Response) => {
 });
 
 // GET /api/geo-check/reports/:id
-router.get('/reports/:id', requireAuth, async (req: Request, res: Response) => {
+router.get('/reports/:id', requireGeoAccess, async (req: Request, res: Response) => {
   try {
     const report = await prisma.geoReport.findFirst({
       where: { id: String(req.params.id), userId: req.user!.userId },
@@ -42,7 +42,7 @@ router.get('/reports/:id', requireAuth, async (req: Request, res: Response) => {
 });
 
 // POST /api/geo-check/check
-router.post('/check', requireAuth, async (req: Request, res: Response) => {
+router.post('/check', requireGeoAccess, async (req: Request, res: Response) => {
   try {
     const { brand, industry, platforms, keywords, competitors } = req.body;
 
@@ -54,7 +54,7 @@ router.post('/check', requireAuth, async (req: Request, res: Response) => {
         platforms: JSON.stringify(platforms || []),
         keywords: JSON.stringify(keywords || []),
         competitors: competitors ? JSON.stringify(competitors) : null,
-        status: 'running', // 状态改为 running 表示正在分析
+        status: 'generating',
       },
     });
 
@@ -102,8 +102,12 @@ router.post('/check', requireAuth, async (req: Request, res: Response) => {
 });
 
 // DELETE /api/geo-check/reports/:id
-router.delete('/reports/:id', requireAuth, async (req: Request, res: Response) => {
+router.delete('/reports/:id', requireGeoAccess, async (req: Request, res: Response) => {
   try {
+    const report = await prisma.geoReport.findFirst({
+      where: { id: String(req.params.id), userId: req.user!.userId },
+    });
+    if (!report) return res.status(404).json({ error: 'Report not found' });
     await prisma.geoReport.delete({ where: { id: String(req.params.id) } });
     res.json({ message: 'Report deleted' });
   } catch (error) {

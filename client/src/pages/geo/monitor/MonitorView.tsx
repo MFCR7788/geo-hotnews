@@ -8,6 +8,7 @@ import { monitorApi } from '../../../services/geoApi'
 import type { MonitorStats, MonitorRecord } from '../../../services/geoApi'
 import StatCard from '../../../components/ui/StatCard'
 import PageHeader from '../../../components/ui/PageHeader'
+import GuideTabs from '../../../components/ui/GuideTabs'
 
 const PLATFORMS = [
   { value: 'deepseek', label: 'DeepSeek' },
@@ -236,6 +237,7 @@ export default function MonitorView() {
           </table>
         )}
       </div>
+      <GuideTabs />
     </div>
   )
 }

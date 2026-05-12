@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router'
 import { contentApi } from '../../../services/geoApi'
 import type { ContentItem } from '../../../services/geoApi'
 import PageHeader from '../../../components/ui/PageHeader'
+import GuideTabs from '../../../components/ui/GuideTabs'
 
 const PLATFORM_ICON: Record<string, string> = {
   zhihu: '📝',
@@ -179,6 +180,7 @@ export default function ContentCalendarView() {
           </div>
         ))}
       </div>
+      <GuideTabs />
     </div>
   )
 }

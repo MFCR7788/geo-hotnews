@@ -184,7 +184,7 @@ export async function runHotspotCheck(io: Server): Promise<void> {
                 { url: normalizedUrl },
                 { source: item.source, title: item.title },
                 ...(normalizedTitle.length >= 4 ? [{
-                  title: { contains: item.title.slice(0, 30), mode: 'insensitive' as const }
+                  title: { contains: item.title.slice(0, 30) }
                 }] : [])
               ]
             }

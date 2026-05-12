@@ -4,13 +4,26 @@
 import { useState, useEffect } from 'react'
 import { notificationApi } from '../../../services/geoApi'
 import type { NotificationItem } from '../../../services/geoApi'
-import PageHeader from '../../../components/ui/PageHeader'
+import GuideTabs from '../../../components/ui/GuideTabs'
 
-const TYPE_MAP: Record<string, { label: string; color: string; icon: string }> = {
-  alert: { label: '告警', color: 'bg-red-500/15 text-red-400 border border-red-500/20', icon: '🚨' },
-  info: { label: '通知', color: 'bg-blue-500/15 text-blue-400 border border-blue-500/20', icon: 'ℹ️' },
-  success: { label: '成功', color: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20', icon: '✅' },
-  warning: { label: '警告', color: 'bg-amber-500/15 text-amber-400 border border-amber-500/20', icon: '⚠️' },
+/* ===== Apple Design Colors ===== */
+const APPLE_BLUE = '#007AFF'
+const APPLE_GREEN = '#34C759'
+const APPLE_ORANGE = '#FF9500'
+const APPLE_RED = '#FF3B30'
+const GRAY_900 = '#1C1C1E'
+const GRAY_600 = '#636366'
+const GRAY_500 = '#8E8E93'
+const GRAY_200 = '#E8E8ED'
+const GRAY_100 = '#F5F5F7'
+const WHITE = '#FFFFFF'
+const CARD_SHADOW = '0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)'
+
+const TYPE_MAP: Record<string, { label: string; color: string; bgColor: string }> = {
+  alert: { label: '告警', color: APPLE_RED, bgColor: 'rgba(255,59,48,0.10)' },
+  info: { label: '通知', color: APPLE_BLUE, bgColor: 'rgba(0,122,255,0.08)' },
+  success: { label: '成功', color: APPLE_GREEN, bgColor: 'rgba(52,199,89,0.10)' },
+  warning: { label: '警告', color: APPLE_ORANGE, bgColor: 'rgba(255,149,0,0.10)' },
 }
 
 function formatDate(dateStr: string) {
@@ -52,69 +65,126 @@ export default function NotificationsView() {
   const unreadCount = notifications.filter(n => !n.isRead).length
 
   return (
-    <div className="p-6">
-      <PageHeader
-        title="通知中心"
-        subtitle={unreadCount > 0 ? `共 ${unreadCount} 条未读通知` : '暂无未读通知'}
-        action={
-          unreadCount > 0 && (
-            <button
-              onClick={markAllRead}
-              className="px-4 py-2 text-sm text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded-xl hover:bg-blue-500/20 transition-all"
-            >
-              全部已读
-            </button>
-          )
-        }
-      />
+    <div style={{ padding: '24px', background: GRAY_100, minHeight: '100%' }}>
+      {/* 页面标题 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div>
+          <h3 style={{ fontSize: '17px', fontWeight: 600, color: GRAY_900, margin: 0 }}>通知中心</h3>
+          <p style={{ fontSize: '13px', color: GRAY_500, margin: '2px 0 0 0' }}>
+            {unreadCount > 0 ? `共 ${unreadCount} 条未读通知` : '暂无未读通知'}
+          </p>
+        </div>
+        {unreadCount > 0 && (
+          <button
+            onClick={markAllRead}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: `1px solid ${APPLE_BLUE}`,
+              fontSize: '14px',
+              color: APPLE_BLUE,
+              background: WHITE,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            全部已读
+          </button>
+        )}
+      </div>
 
-      <div className="rounded-2xl bg-white/[0.02] border border-white/5 overflow-hidden">
+      {/* 通知列表 */}
+      <div style={{
+        background: WHITE,
+        borderRadius: '16px',
+        boxShadow: CARD_SHADOW,
+        border: '1px solid rgba(0,0,0,0.04)',
+        overflow: 'hidden'
+      }}>
         {loading ? (
-          <div className="text-center py-16 text-slate-500">加载中...</div>
+          <div style={{ textAlign: 'center', padding: '64px 0', color: GRAY_500, fontSize: '14px' }}>
+            加载中...
+          </div>
         ) : notifications.length === 0 ? (
-          <div className="text-center py-16 text-slate-500">
-            <div className="text-4xl mb-3">🔔</div>
-            <p>暂无通知</p>
+          <div style={{ textAlign: 'center', padding: '64px 0', color: GRAY_500 }}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>🔔</div>
+            <p style={{ fontSize: '14px' }}>暂无通知</p>
           </div>
         ) : (
-          <div className="divide-y divide-white/[0.03]">
-            {notifications.map(item => {
+          <div>
+            {notifications.map((item, index) => {
               const typeInfo = TYPE_MAP[item.type] || TYPE_MAP.info
               return (
                 <div
                   key={item.id}
                   onClick={() => markRead(item)}
-                  className={`flex items-start gap-4 px-6 py-4 cursor-pointer transition-colors hover:bg-white/[0.02] ${
-                    !item.isRead ? 'bg-blue-500/5' : ''
-                  }`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    padding: '16px 20px',
+                    cursor: 'pointer',
+                    borderBottom: index < notifications.length - 1 ? `1px solid ${GRAY_200}` : 'none',
+                    backgroundColor: !item.isRead ? 'rgba(0,122,255,0.04)' : 'transparent',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = !item.isRead ? 'rgba(0,122,255,0.08)' : GRAY_100}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = !item.isRead ? 'rgba(0,122,255,0.04)' : 'transparent'}
                 >
                   {/* Unread dot */}
                   {!item.isRead && (
-                    <div className="w-2 h-2 rounded-full bg-blue-400 mt-2 flex-shrink-0" />
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: APPLE_BLUE,
+                      marginTop: '6px',
+                      flexShrink: 0
+                    }} />
                   )}
-                  {item.isRead && <div className="w-2 mt-2 flex-shrink-0" />}
-
-                  {/* Icon */}
-                  <div className="text-xl flex-shrink-0">{typeInfo.icon}</div>
+                  {item.isRead && <div style={{ width: '8px', marginTop: '6px', flexShrink: 0 }} />}
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-white">{item.title}</span>
-                      <span className={`px-1.5 py-0.5 rounded-lg text-xs ${typeInfo.color}`}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: GRAY_900 }}>{item.title}</span>
+                      <span style={{
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: typeInfo.color,
+                        backgroundColor: typeInfo.bgColor
+                      }}>
                         {typeInfo.label}
                       </span>
                     </div>
                     {item.content && item.content !== item.title && (
-                      <p className="text-sm text-slate-500 mb-1">{item.content}</p>
+                      <p style={{ fontSize: '13px', color: GRAY_600, margin: '0 0 4px 0' }}>{item.content}</p>
                     )}
-                    <div className="text-xs text-slate-600">{formatDate(item.createdAt)}</div>
+                    <div style={{ fontSize: '12px', color: GRAY_500 }}>{formatDate(item.createdAt)}</div>
                   </div>
 
                   {/* Hotspot link */}
-                  {item.hotspotId && (
+                  {item.hotspotUrl && (
                     <button
-                      className="text-xs text-blue-400 hover:text-blue-300 flex-shrink-0 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        window.open(item.hotspotUrl, '_blank')
+                      }}
+                      style={{
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        fontSize: '12px',
+                        color: APPLE_BLUE,
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                        fontFamily: 'inherit'
+                      }}
                     >
                       查看详情 →
                     </button>
@@ -125,6 +195,7 @@ export default function NotificationsView() {
           </div>
         )}
       </div>
+      <GuideTabs />
     </div>
   )
 }

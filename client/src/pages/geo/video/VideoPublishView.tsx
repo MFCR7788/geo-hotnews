@@ -3,6 +3,7 @@
  */
 import { useNavigate } from 'react-router'
 import PageHeader from '../../../components/ui/PageHeader'
+import GuideTabs from '../../../components/ui/GuideTabs'
 
 export default function VideoPublishView() {
   const navigate = useNavigate()
@@ -24,6 +25,7 @@ export default function VideoPublishView() {
         </div>
         <p className="text-xs text-slate-600 mt-6">功能开发中，即将上线</p>
       </div>
+      <GuideTabs />
     </div>
   )
 }

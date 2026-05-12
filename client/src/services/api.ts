@@ -161,10 +161,10 @@ export const hotspotsApi = {
   
   getById: (id: string) => request<Hotspot>(`/hotspots/${id}`),
   
-  search: (query: string, sources?: string[]) => 
+  search: (query: string, region: 'global' | 'china' | 'both' = 'global', resultsPerSource: number = 5) => 
     request<{ results: Hotspot[] }>('/hotspots/search', {
       method: 'POST',
-      body: JSON.stringify({ query, sources })
+      body: JSON.stringify({ query, region, resultsPerSource })
     }),
   
   delete: (id: string) => 

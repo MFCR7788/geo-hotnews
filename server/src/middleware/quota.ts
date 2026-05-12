@@ -156,7 +156,7 @@ export function requireKeywordQuota() {
       return next();
     }
 
-    const userId = (req as any).userId;
+    const userId = req.user?.userId;
     if (!userId) {
       return next();
     }
@@ -182,7 +182,7 @@ export function requireKeywordQuota() {
  */
 export function requireAIAnalysisQuota() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const userId = (req as any).userId;
+    const userId = req.user?.userId;
     if (!userId) {
       return next();
     }

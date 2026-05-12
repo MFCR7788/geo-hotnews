@@ -99,8 +99,8 @@ router.get('/similar', requireAuth, async (req: Request, res: Response) => {
     const results = await prisma.keywordLibrary.findMany({
       where: {
         OR: [
-          { text: { startsWith: q, mode: 'insensitive' } },
-          { text: { contains: q, mode: 'insensitive' } },
+          { text: { startsWith: q } },
+          { text: { contains: q } },
         ]
       },
       orderBy: [
