@@ -1,255 +1,79 @@
-name: 🚀 Deploy to Alibaba Cloud
+name: Deploy to Alibaba Cloud
 
 on:
   push:
-    branches: [main, master]
-  workflow_dispatch:
-
-concurrency:
-  group: deploy
-  cancel-in-progress: false
+    branches: [ main, master ]
 
 jobs:
   deploy:
-    name: 🚀 Deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Export SERVER_ENV
-        run: |
-          echo "SERVER_ENV<<EOF" >> $GITHUB_ENV
-          echo "${{ secrets.SERVER_ENV }}" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-
-      - name: Deploy via SSH
-        id: deploy
-        uses: appleboy/ssh-action@v1.2.0
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
         with:
-          host: ${{ secrets.ALIYUN_HOST }}
-          username: root
-          password: ${{ secrets.ALIYUN_PASSWORD }}
-          envs: SERVER_ENV
-          # 30分钟连接超时，处理SSH不稳定的服务器
-          command_timeout: 25m
-          timeout: 28m
-          # 连接参数优化
-          command_interval: 30s
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Setup PM2
+        run: npm install -g pm2
+
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          port: ${{ secrets.SERVER_PORT }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          envs: DEPLOY_PATH,POSTGRES_PASSWORD
+          envs_secrets: POSTGRES_PASSWORD
           script: |
             set -e
-            D="/opt/apps/YP-monitor"
-            DOMAIN="ai.zjsifan.com"
+            export DEPLOY_PATH="/www/geo-hotnews"
+            export NODE_VERSION="20"
 
-            echo "=========================================="
-            echo "   YP-Monitor Auto Deploy"
-            echo "   $(date '+%Y-%m-%d %H:%M:%S')"
-            echo "=========================================="
-
-            # === 清理旧项目（保留环境）===
-            echo "--- [0/7] Cleanup old project ---"
-            
-            # 停止并删除所有 PM2 进程
-            pm2 delete all 2>/dev/null || true
-            pm2 kill 2>/dev/null || true
-            
-            # 查找并删除旧项目目录（但保留环境目录）
-            for dir in /opt/apps /var/www /home /root; do
-              if [ -d "$dir" ]; then
-                for subdir in $(ls -la "$dir" 2>/dev/null | grep -v '^total' | grep '^d' | awk '{print $NF}' | grep -v '^\.'); do
-                  if [ -d "$dir/$subdir" ] && [ "$dir/$subdir" != "$D" ]; then
-                    echo "Removing old directory: $dir/$subdir"
-                    rm -rf "$dir/$subdir"
-                  fi
-                done
-              fi
-            done
-            
-            # 清理 Nginx 旧配置
-            rm -f /etc/nginx/sites-enabled/* 2>/dev/null || true
-            rm -f /etc/nginx/conf.d/*.conf 2>/dev/null || true
-            echo "✅ Old project cleaned"
-
-            # === 环境准备（幂等）===
-            echo "--- [1/7] Environment setup ---"
-            NODE_VERSION=$(node --version 2>/dev/null | sed 's/v//')
-            NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d. -f1)
-            echo "当前 Node.js: $NODE_VERSION (major: $NODE_MAJOR)"
-            if [ "$NODE_MAJOR" -lt 20 ] 2>/dev/null; then
-              echo "Node.js 版本过低 (< 20)，使用二进制方式安装 20 LTS..."
-              # 直接下载 Node.js 20 预编译二进制（不依赖 nodesource）
-              ARCH=$(uname -m)
-              if [ "$ARCH" = "x86_64" ]; then
-                NODE_ARCH="x64"
-              elif [ "$ARCH" = "aarch64" ]; then
-                NODE_ARCH="arm64"
-              else
-                NODE_ARCH="$ARCH"
-              fi
-              curl -fsSL "https://nodejs.org/dist/v20.18.3/node-v20.18.3-linux-${NODE_ARCH}.tar.xz" -o /tmp/node20.tar.xz && \
-                tar -xJf /tmp/node20.tar.xz -C /usr/local --strip-components=1 && \
-                rm -f /tmp/node20.tar.xz && \
-                echo "升级完成: $(node --version)"
+            # Clone or pull code
+            if [ ! -d "$DEPLOY_PATH" ]; then
+              mkdir -p $DEPLOY_PATH
+              git clone https://github.com/MFCR7788/geo-hotnews.git $DEPLOY_PATH
             else
-              echo "Node.js 版本满足要求 (>= 20)"
-            fi
-            npm install -g pm2 > /dev/null 2>&1 || true
-            which nginx >/dev/null 2>&1 || apt-get install -y -qq nginx > /dev/null 2>&1
-            which git >/dev/null 2>&1 || apt-get install -y -qq git > /dev/null 2>&1
-            which certbot >/dev/null 2>&1 || apt-get install -y -qq certbot python3-certbot-nginx > /dev/null 2>&1
-            pm2 startup systemd -u root --hp /root > /dev/null 2>&1 || true
-            echo "✅ Environment ready (Node: $(node --version))"
-
-            # === 拉取代码 ===
-            echo "--- [2/7] Pull code ---"
-            mkdir -p /opt/apps
-            if [ -d "$D/.git" ]; then
-              cd "$D" && git fetch origin && git reset --hard origin/master
-            else
-              rm -rf "$D" && git clone https://github.com/MFCR7788/YP-monitor.git "$D"
-            fi
-            echo "✅ Code updated"
-
-            # === 后端构建+启动 ===
-            echo "--- [3/7] Backend build ---"
-            cd "$D/server"
-            # 写入正确的环境变量（Supabase PostgreSQL + 其他配置）
-            if [ -n "$SERVER_ENV" ]; then
-              printf '%s\n' "$SERVER_ENV" > .env
-              echo "✅ .env configured from SERVER_ENV secret"
-            else
-              cp -n .env.example .env 2>/dev/null || true
-              echo "⚠️ Using default .env.example (SERVER_ENV not set)"
-            fi
-            npm install 2>&1 | tail -2
-            npx prisma generate > /dev/null 2>&1
-            npx prisma db push > /dev/null 2>&1 || true
-            npm run build 2>&1 | tail -2
-            
-            pm2 restart yupi-server 2>/dev/null || \
-            (pm2 start dist/index.js --name yupi-server)
-            pm2 save > /dev/null 2>&1
-            echo "✅ Backend running (port 3001)"
-
-            # === 前端构建 ===
-            echo "--- [4/7] Frontend build ---"
-            cd "$D/client"
-            npm install 2>&1 | tail -2
-            npx vite build 2>&1 | tail -3
-            echo "✅ Frontend built"
-
-            # === Nginx + SSL 配置 ===
-            echo "--- [5/7] Nginx + SSL setup ---"
-            
-            # 准备 webroot
-            mkdir -p /var/www/html
-            
-            # 生成 SSL 证书（Let's Encrypt）
-            certbot certonly --nginx \
-              -d $DOMAIN -d www.$DOMAIN \
-              --non-interactive --agree-tos \
-              --email admin@$DOMAIN \
-              --webroot -w /var/www/html 2>&1 || {
-              echo "⚠️ Let's Encrypt failed, trying standalone..."
-              certbot certonly --nginx \
-                -d $DOMAIN -d www.$DOMAIN \
-                --non-interactive --agree-tos \
-                --email admin@$DOMAIN \
-                --standalone --pre-hook "systemctl stop nginx" \
-                --post-hook "systemctl start nginx" 2>&1 || {
-                echo "⚠️ SSL cert failed, using self-signed..."
-                mkdir -p /etc/nginx/ssl
-                openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-                  -keyout /etc/nginx/ssl/$DOMAIN.key \
-                  -out /etc/nginx/ssl/$DOMAIN.crt \
-                  -subj "/C=CN/ST=Shanghai/L=Shanghai/O=YP/CN=$DOMAIN" 2>/dev/null
-              }
-            }
-
-            # Nginx 主配置
-            if [ -f /etc/letsencrypt/live/$DOMAIN/fullchain.pem ]; then
-              cat > /etc/nginx/sites-available/$DOMAIN << 'NGINX'
-            server {
-                listen 80;
-                listen [::]:80;
-                server_name ai.zjsifan.com www.ai.zjsifan.com;
-                location /.well-known/acme-challenge/ {
-                    root /var/www/html;
-                }
-                location / {
-                    return 301 https://$host$request_uri;
-                }
-            }
-            server {
-                listen 443 ssl http2;
-                listen [::]:443 ssl http2;
-                server_name ai.zjsifan.com www.ai.zjsifan.com;
-
-                ssl_certificate /etc/letsencrypt/live/ai.zjsifan.com/fullchain.pem;
-                ssl_certificate_key /etc/letsencrypt/live/ai.zjsifan.com/privkey.pem;
-                include /etc/letsencrypt/options-ssl-nginx.conf;
-                ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-
-                location / {
-                    alias /opt/apps/YP-monitor/client/dist/;
-                    try_files $uri $uri/ /index.html;
-                    location ~* \.(js|css|png|jpg|ico|svg|woff2)$ {
-                        expires 30d; add_header Cache-Control "public, immutable";
-                    }
-                }
-                location /api/ {
-                    proxy_pass http://127.0.0.1:3001;
-                    proxy_http_version 1.1;
-                    proxy_set_header Host $host;
-                    proxy_set_header X-Real-IP $remote_addr;
-                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                    proxy_set_header X-Forwarded-Proto $scheme;
-                    proxy_read_timeout 120s;
-                }
-                location /socket.io/ {
-                    proxy_pass http://127.0.0.1:3001;
-                    proxy_http_version 1.1;
-                    proxy_set_header Upgrade $http_upgrade;
-                    proxy_set_header Connection "upgrade";
-                    proxy_set_header Host $host;
-                    proxy_read_timeout 3600s;
-                }
-            }
-            NGINX
-            else
-            # 自签名证书备选
-            cat > /etc/nginx/sites-available/$DOMAIN << NGINX
-            server { listen 80; listen [::]:80; server_name $DOMAIN www.$DOMAIN; location / { return 301 https://\$host\$request_uri; } location /.well-known/acme-challenge/ { root /var/www/html; } }
-            server {
-                listen 443 ssl http2;
-                listen [::]:443 ssl http2;
-                server_name $DOMAIN www.$DOMAIN;
-                ssl_certificate /etc/nginx/ssl/$DOMAIN.crt;
-                ssl_certificate_key /etc/nginx/ssl/$DOMAIN.key;
-                location / {
-                    alias /opt/apps/YP-monitor/client/dist/;
-                    try_files \$uri \$uri/ /index.html;
-                    location ~* \.(js|css|png|jpg|ico|svg|woff2)$ { expires 30d; add_header Cache-Control "public, immutable"; }
-                }
-                location /api/ { proxy_pass http://127.0.0.1:3001; proxy_http_version 1.1; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_read_timeout 120s; }
-                location /socket.io/ { proxy_pass http://127.0.0.1:3001; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_read_timeout 3600s; }
-            }
-            NGINX
+              cd $DEPLOY_PATH && git pull origin main
             fi
 
-            ln -sf /etc/nginx/sites-available/$DOMAIN /etc/nginx/sites-enabled/
+            # Copy production environment file
+            cp $DEPLOY_PATH/server/.env.production $DEPLOY_PATH/server/.env
+
+            # Install backend dependencies
+            cd $DEPLOY_PATH/server
+            npm install
+            npx prisma generate
+            npx prisma db push
+
+            # Install frontend dependencies and build
+            cd $DEPLOY_PATH/client
+            npm install
+            npm run build
+
+            # Stop old PM2 process
+            pm2 delete geo-server || true
+
+            # Start backend with PM2
+            cd $DEPLOY_PATH/server
+            pm2 start npm --name "geo-server" -- start
+
+            # Setup Nginx
+            cp $DEPLOY_PATH/deploy/nginx.conf /etc/nginx/sites-available/geo-hotnews
+            ln -sf /etc/nginx/sites-available/geo-hotnews /etc/nginx/sites-enabled/
             rm -f /etc/nginx/sites-enabled/default
+
+            # Test and reload Nginx
             nginx -t && systemctl reload nginx
-            echo "✅ Nginx + SSL configured"
 
-            # === SSL 自动续期 ===
-            echo "--- [6/7] Setup SSL auto-renew ---"
-            systemctl cat certbot.timer 2>/dev/null || \
-              (echo "0 0 * * * root certbot renew --quiet --deploy-hook 'systemctl reload nginx'" > /etc/cron.d/certbot-renew)
+            # Save PM2 process list
+            pm2 save
 
-            echo ""
-            echo "=========================================="
-            echo "   ✅ DEPLOY SUCCESS!"
-            echo "   🌐 https://$DOMAIN"
-            echo "=========================================="
+            echo "✅ Deployment completed successfully!"
