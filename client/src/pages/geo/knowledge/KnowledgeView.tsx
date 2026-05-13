@@ -9,12 +9,12 @@ import PageHeader from '../../../components/ui/PageHeader'
 import GuideTabs from '../../../components/ui/GuideTabs'
 
 const CATEGORIES = [
-  { key: '冲锋衣', name: '冲锋衣', icon: '🧥' },
-  { key: '防晒衣', name: '防晒衣', icon: '☀️' },
-  { key: '其他面料', name: '其他面料', icon: '🧵' },
-  { key: '辅料', name: '辅料', icon: '🔩' },
-  { key: '工艺', name: '工艺', icon: '⚙️' },
-  { key: '品牌', name: '品牌', icon: '🏷️' },
+  { key: 'product', name: '产品参数', icon: '📋' },
+  { key: 'story', name: '品牌故事', icon: '📖' },
+  { key: 'review', name: '客户评价', icon: '⭐' },
+  { key: 'cert', name: '专业认证', icon: '🏆' },
+  { key: 'tech', name: '技术规格', icon: '⚙️' },
+  { key: 'faq', name: '常见问题', icon: '❓' },
 ]
 
 function parseTags(tagsStr: string | undefined): string[] {
@@ -27,7 +27,7 @@ function formatTags(tags: string[]): string {
 }
 
 export default function KnowledgeView() {
-  const [selectedCat, setSelectedCat] = useState('冲锋衣')
+  const [selectedCat, setSelectedCat] = useState('product')
   const [items, setItems] = useState<KnowledgeEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [showDialog, setShowDialog] = useState(false)

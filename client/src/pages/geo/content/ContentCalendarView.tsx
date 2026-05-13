@@ -1,7 +1,3 @@
-/**
- * 内容日历视图
- * 按日期展示内容发布计划
- */
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { contentApi } from '../../../services/geoApi'
@@ -19,11 +15,11 @@ const PLATFORM_ICON: Record<string, string> = {
   weibo: '📱',
 }
 
-const STATUS_COLOR: Record<string, string> = {
-  published: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
-  draft: 'bg-white/10 text-gray-300 border border-white/10',
-  scheduled: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
-  archived: 'bg-orange-500/15 text-orange-400 border border-orange-500/20',
+const STATUS_STYLE: Record<string, string> = {
+  published: 'bg-green-50 text-green-600 border border-green-200',
+  draft: 'bg-gray-50 text-gray-500 border border-gray-200',
+  scheduled: 'bg-amber-50 text-amber-600 border border-amber-200',
+  archived: 'bg-orange-50 text-orange-500 border border-orange-200',
 }
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
@@ -92,44 +88,38 @@ export default function ContentCalendarView() {
         onBack={() => navigate('/geo/content/list')}
       />
 
-      {/* Month navigation */}
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={prevMonth}
-          className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-300 hover:bg-white/10 hover:border-white/20 transition-all"
+          className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
         >
           ← 上月
         </button>
-        <h2 className="text-lg font-semibold text-white">
+        <h2 className="text-lg font-semibold text-gray-900">
           {currentYear}年 {MONTHS[currentMonth]}
         </h2>
         <button
           onClick={nextMonth}
-          className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-300 hover:bg-white/10 hover:border-white/20 transition-all"
+          className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
         >
           下月 →
         </button>
       </div>
 
-      {/* Calendar grid */}
-      <div className="rounded-2xl bg-white/[0.02] border border-white/5 overflow-hidden">
-        {/* Weekday header */}
-        <div className="grid grid-cols-7 border-b border-white/5">
+      <div className="rounded-xl bg-white border border-gray-200 overflow-hidden shadow-sm">
+        <div className="grid grid-cols-7 border-b border-gray-200">
           {WEEKDAYS.map(d => (
-            <div key={d} className="text-center py-2 text-xs font-medium text-slate-500">
+            <div key={d} className="text-center py-3 text-xs font-medium text-gray-500 bg-gray-50">
               星期{d}
             </div>
           ))}
         </div>
 
-        {/* Day cells */}
         <div className="grid grid-cols-7">
-          {/* Empty cells before first day */}
           {Array.from({ length: firstDay }).map((_, i) => (
-            <div key={`empty-${i}`} className="min-h-24 border-b border-r border-white/[0.03] p-1 bg-white/[0.01]" />
+            <div key={`empty-${i}`} className="min-h-[100px] border-b border-r border-gray-100 p-2 bg-gray-50/50" />
           ))}
 
-          {/* Day cells */}
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1
             const items = getItemsForDay(day)
@@ -138,29 +128,33 @@ export default function ContentCalendarView() {
             return (
               <div
                 key={day}
-                className={`min-h-24 border-b border-r border-white/[0.03] p-1 ${
-                  isWeekend ? 'bg-white/[0.01]' : ''
-                }`}
+                className={`min-h-[100px] border-b border-r border-gray-100 p-2 ${
+                  isWeekend ? 'bg-gray-50/30' : ''
+                } ${isToday(day) ? 'bg-blue-50/40' : ''}`}
               >
-                <div className={`text-xs font-medium mb-1 px-1 ${
-                  isToday(day) ? 'text-blue-400' : 'text-slate-500'
+                <div className={`text-xs font-medium mb-1.5 px-1 ${
+                  isToday(day) ? 'text-blue-600' : 'text-gray-600'
                 }`}>
-                  {isToday(day) ? `● ${day}` : day}
+                  {isToday(day) ? (
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-500 text-white text-xs">
+                      {day}
+                    </span>
+                  ) : day}
                 </div>
-                <div className="space-y-0.5">
+                <div className="space-y-1">
                   {items.slice(0, 3).map(item => (
                     <div
                       key={item.id}
                       onClick={() => navigate(`/geo/content/${item.id}`)}
-                      className={`text-[10px] px-1.5 py-0.5 rounded truncate cursor-pointer transition-colors ${
-                        STATUS_COLOR[item.status] || 'bg-white/10 text-gray-300 border border-white/10'
+                      className={`text-[11px] px-1.5 py-0.5 rounded truncate cursor-pointer transition-colors ${
+                        STATUS_STYLE[item.status] || 'bg-blue-50 text-blue-600 border border-blue-200'
                       }`}
                     >
                       {PLATFORM_ICON[item.platform || ''] || '📄'} {item.title?.slice(0, 8) || '(无标题)'}
                     </div>
                   ))}
                   {items.length > 3 && (
-                    <div className="text-[10px] text-slate-600 px-1.5">+{items.length - 3} 更多</div>
+                    <div className="text-[10px] text-gray-400 px-1.5">+{items.length - 3} 更多</div>
                   )}
                 </div>
               </div>
@@ -169,14 +163,16 @@ export default function ContentCalendarView() {
         </div>
       </div>
 
-      {/* Legend */}
       <div className="flex items-center gap-4 mt-4">
-        {Object.entries(STATUS_COLOR).map(([status, color]) => (
+        {[
+          { status: 'published', label: '已发布', style: 'bg-green-50 border-green-200 text-green-600' },
+          { status: 'draft', label: '草稿', style: 'bg-gray-50 border-gray-200 text-gray-500' },
+          { status: 'scheduled', label: '待发布', style: 'bg-amber-50 border-amber-200 text-amber-600' },
+          { status: 'archived', label: '已归档', style: 'bg-orange-50 border-orange-200 text-orange-500' },
+        ].map(({ status, label, style }) => (
           <div key={status} className="flex items-center gap-1.5">
-            <div className={`w-3 h-3 rounded border ${color}`} />
-            <span className="text-xs text-slate-500">
-              {status === 'published' ? '已发布' : status === 'draft' ? '草稿' : status === 'scheduled' ? '待发布' : '已归档'}
-            </span>
+            <div className={`w-3 h-3 rounded border ${style}`} />
+            <span className="text-xs text-gray-500">{label}</span>
           </div>
         ))}
       </div>

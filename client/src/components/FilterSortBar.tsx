@@ -33,6 +33,10 @@ const SOURCE_OPTIONS = [
   { value: 'sogou', label: '搜狗' },
   { value: 'bilibili', label: 'Bilibili' },
   { value: 'weibo', label: '微博热搜' },
+  { value: 'baidu', label: '百度热搜' },
+  { value: 'douyin', label: '抖音热搜' },
+  { value: 'zhihu', label: '知乎热榜' },
+  { value: 'toutiao', label: '头条热搜' },
   { value: 'hackernews', label: 'HackerNews' },
   { value: 'duckduckgo', label: 'DuckDuckGo' },
 ];

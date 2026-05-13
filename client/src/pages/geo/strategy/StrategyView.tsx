@@ -29,7 +29,7 @@ export default function StrategyView() {
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [newStrategy, setNewStrategy] = useState({ name: '', category: '', description: '' })
+  const [newStrategy, setNewStrategy] = useState({ name: '', category: '', priority: 'medium', description: '' })
 
   const today = new Date()
   const [currentYear, setCurrentYear] = useState(today.getFullYear())
@@ -46,10 +46,10 @@ export default function StrategyView() {
     if (!newStrategy.name.trim()) return
     setSubmitting(true)
     try {
-      const created = await strategyApi.create({ name: newStrategy.name, category: newStrategy.category, description: newStrategy.description })
+      const created = await strategyApi.create({ name: newStrategy.name, category: newStrategy.category, priority: newStrategy.priority, description: newStrategy.description })
       setStrategies(prev => [...prev, created])
       setShowCreate(false)
-      setNewStrategy({ name: '', category: '', description: '' })
+      setNewStrategy({ name: '', category: '', priority: 'medium', description: '' })
     } catch {} finally {
       setSubmitting(false)
     }
@@ -287,6 +287,31 @@ export default function StrategyView() {
                   onFocus={(e) => { e.target.style.borderColor = APPLE_BLUE; e.target.style.boxShadow = '0 0 0 3px rgba(0,122,255,0.12)' }}
                   onBlur={(e) => { e.target.style.borderColor = GRAY_200; e.target.style.boxShadow = 'none' }}
                 />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: GRAY_600, marginBottom: '8px' }}>优先级</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {[
+                    { value: 'high', label: '高', color: '#FF3B30' },
+                    { value: 'medium', label: '中', color: '#FF9500' },
+                    { value: 'low', label: '低', color: APPLE_GREEN }
+                  ].map(p => (
+                    <button
+                      key={p.value}
+                      onClick={() => setNewStrategy(s => ({ ...s, priority: p.value }))}
+                      style={{
+                        flex: 1, padding: '8px', borderRadius: '10px',
+                        border: `2px solid ${newStrategy.priority === p.value ? p.color : GRAY_200}`,
+                        background: newStrategy.priority === p.value ? `${p.color}10` : '#F5F5F7',
+                        color: newStrategy.priority === p.value ? p.color : GRAY_500,
+                        fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+                        fontFamily: 'inherit', transition: 'all 0.2s ease'
+                      }}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: GRAY_600, marginBottom: '8px' }}>描述</label>

@@ -12,8 +12,10 @@ import GuideTabs from '../../../components/ui/GuideTabs'
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   uploading: { label: '上传中', color: 'bg-amber-500/15 text-amber-400' },
+  generating: { label: '生成中', color: 'bg-purple-500/15 text-purple-400' },
   ready: { label: '已完成', color: 'bg-blue-500/15 text-blue-400' },
   published: { label: '已发布', color: 'bg-emerald-500/15 text-emerald-400' },
+  draft: { label: '草稿', color: 'bg-gray-500/15 text-gray-400' },
   failed: { label: '失败', color: 'bg-red-500/15 text-red-400' },
 }
 
@@ -22,8 +24,16 @@ const PLATFORM_MAP: Record<string, string> = {
   weibo: '微博', zhihu: '知乎', wechat: '微信', local: '本地',
 }
 
-const STATUS_OPTIONS = ['uploading', 'ready', 'published', 'failed']
+const VIDEO_TYPE_MAP: Record<string, string> = {
+  text_to_video: '文案转视频',
+  image_to_video: '图片转视频',
+  video_mix: '视频混剪',
+  ai_image_video: 'AI图文成片',
+}
+
+const STATUS_OPTIONS = ['draft', 'uploading', 'generating', 'ready', 'published', 'failed']
 const PLATFORM_OPTIONS = ['douyin', 'xiaohongshu', 'bilibili', 'weibo', 'zhihu', 'wechat', 'local']
+const VIDEO_TYPE_OPTIONS = ['text_to_video', 'image_to_video', 'video_mix', 'ai_image_video']
 
 function formatDate(d: string) {
   return new Date(d).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
@@ -34,7 +44,7 @@ export default function VideoCenterView() {
   const [videos, setVideos] = useState<VideoAsset[]>([])
   const [stats, setStats] = useState<VideoStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState({ status: '', platform: '' })
+  const [filter, setFilter] = useState({ status: '', platform: '', videoType: '' })
 
   useEffect(() => {
     Promise.all([
@@ -50,6 +60,7 @@ export default function VideoCenterView() {
   const filtered = videos.filter(v => {
     if (filter.status && v.status !== filter.status) return false
     if (filter.platform && v.platform !== filter.platform) return false
+    if (filter.videoType && v.videoType !== filter.videoType) return false
     return true
   })
 
@@ -92,6 +103,14 @@ export default function VideoCenterView() {
           >
             <option value="" className="bg-[#ffffff]">全部平台</option>
             {PLATFORM_OPTIONS.map(p => <option key={p} value={p} className="bg-[#ffffff]">{PLATFORM_MAP[p] || p}</option>)}
+          </select>
+          <select
+            value={filter.videoType}
+            onChange={e => setFilter(f => ({ ...f, videoType: e.target.value }))}
+            className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-colors"
+          >
+            <option value="" className="bg-[#ffffff]">全部类型</option>
+            {VIDEO_TYPE_OPTIONS.map(t => <option key={t} value={t} className="bg-[#ffffff]">{VIDEO_TYPE_MAP[t] || t}</option>)}
           </select>
         </div>
         <button

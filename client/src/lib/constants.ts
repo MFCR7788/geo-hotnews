@@ -9,7 +9,7 @@ export const INDUSTRIES = [
 export const PLATFORMS = [
   { value: 'douyin', label: '抖音' },
   { value: 'xiaohongshu', label: '小红书' },
-  { value: 'bilibili', 'label': 'B站' },
+  { value: 'bilibili', label: 'B站' },
   { value: 'weibo', label: '微博' },
   { value: 'kuaishou', label: '快手' },
   { value: 'wechat', label: '微信公众号' },

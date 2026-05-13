@@ -6,9 +6,9 @@ import PageHeader from '../../../components/ui/PageHeader'
 import GuideTabs from '../../../components/ui/GuideTabs'
 
 const PLAN_FEATURES = [
-  { name: '免费版', price: '¥0', features: ['GEO体检 5次/月', '内容生成 10篇/月', 'AI监测 3次/天', '视频生成 2个/月'] },
-  { name: '专业版', price: '¥999/月', features: ['GEO体检 无限制', '内容生成 无限制', 'AI监测 无限制', '视频生成 无限制', '优先客服支持'] },
-  { name: '企业版', price: '¥2999/月', features: ['全部专业版功能', '多品牌管理', 'API调用', '专属客户成功经理', '定制化报告'] },
+  { name: '免费版', price: '¥0', period: '', features: ['GEO体检 5次/月', '内容生成 5篇/月', 'AI监测 1个任务', '知识库 20条', '视频生成 2个/月'] },
+  { name: '专业版', price: '¥99', period: '/月', features: ['GEO体检 50次/月', '内容生成 100篇/月', 'AI监测 10个任务', '知识库 500条', '视频生成 50个/月', '优先客服支持'], yearly: '¥795/年' },
+  { name: '企业版', price: '¥299', period: '/月', features: ['GEO体检 无限制', '内容生成 无限制', 'AI监测 无限制', '知识库 无限制', '视频生成 无限制', '多品牌管理', 'API调用', '专属客户成功经理', '定制化报告'], yearly: '¥2,390/年' },
 ]
 
 export default function SettingsSubscriptionView() {
@@ -21,7 +21,12 @@ export default function SettingsSubscriptionView() {
           <div key={plan.name} className={`bg-white/5 backdrop-blur-sm rounded-2xl border p-6 ${i === 1 ? 'border-blue-400/50 ring-2 ring-blue-500/20' : 'border-white/10'}`}>
             {i === 1 && <div className="text-xs text-blue-400 font-medium mb-2">推荐</div>}
             <div className="text-lg font-semibold text-white mb-1">{plan.name}</div>
-            <div className="text-2xl font-bold text-white mb-4">{plan.price}</div>
+            <div className="flex items-baseline gap-1 mb-1">
+              <span className="text-2xl font-bold text-white">{plan.price}</span>
+              <span className="text-sm text-gray-400">{plan.period}</span>
+            </div>
+            {plan.yearly && <div className="text-xs text-gray-500 mb-4">年付 {plan.yearly}</div>}
+            {!plan.yearly && <div className="mb-4" />}
             <ul className="space-y-2 mb-6">
               {plan.features.map(f => (
                 <li key={f} className="text-sm text-gray-400 flex items-center gap-2">
