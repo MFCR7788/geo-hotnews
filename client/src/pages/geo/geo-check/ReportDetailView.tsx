@@ -68,6 +68,35 @@ interface EnhancedReport extends GeoReportItem {
     weaknesses: string[]
     overallAssessment: string
   }
+  realTestResults?: {
+    aiVisibility?: {
+      models: Array<{
+        model: string
+        modelName: string
+        tests: Array<{
+          model: string
+          modelName: string
+          question: string
+          response: string
+          brandMentioned: boolean
+          mentionPosition: number
+          competitorMentions: string[]
+        }>
+        mentionRate: number
+      }>
+      overallMentionRate: number
+    }
+    contentCoverage?: {
+      platforms: Array<{
+        platform: string
+        platformName: string
+        query: string
+        resultCount: number
+        topResults: Array<{ title: string; url: string }>
+      }>
+      overallCoverage: number
+    }
+  }
 }
 
 function getGeoLevel(score: number) {
@@ -479,7 +508,7 @@ export default function ReportDetailView() {
   const [report, setReport] = useState<EnhancedReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'details' | 'issues' | 'recommendations'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'details' | 'realdata' | 'issues' | 'recommendations'>('overview')
 
   const reportRef = useRef<HTMLDivElement>(null)
 
@@ -502,8 +531,16 @@ export default function ReportDetailView() {
       }
     } catch (e) {}
 
+    let realTestResults: EnhancedReport['realTestResults'] = undefined
+    try {
+      if (data.testResults) {
+        realTestResults = typeof data.testResults === 'string' ? JSON.parse(data.testResults) : data.testResults
+      }
+    } catch (e) {}
+
     const enhanced: EnhancedReport = {
       ...data,
+      realTestResults,
       dimensions: {
         aiVisibility: dimensions.aiVisibility ?? dimensions.aiVis ?? calculateAiVisibility(data),
         contentCoverage: dimensions.contentCoverage ?? dimensions.contentCov ?? calculateContentCoverage(data),
@@ -705,6 +742,7 @@ export default function ReportDetailView() {
   const tabs = [
     { id: 'overview' as const, label: '总览', icon: BarChart3 },
     { id: 'details' as const, label: '详细指标', icon: Target },
+    { id: 'realdata' as const, label: '检测数据', icon: Eye },
     { id: 'issues' as const, label: '问题分析', icon: AlertCircle },
     { id: 'recommendations' as const, label: '优化建议', icon: Lightbulb },
   ]
@@ -1015,6 +1053,180 @@ export default function ReportDetailView() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 真实检测数据标签页 */}
+      <AnimatePresence mode="wait">
+        {activeTab === 'realdata' && (
+          <motion.div
+            key="realdata"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="space-y-5"
+          >
+            {report.realTestResults ? (
+              <>
+                {/* AI可见度真实检测 */}
+                <div className="rounded-2xl bg-white border border-gray-200 p-6 shadow-sm">
+                  <PageHeader
+                    title="🤖 AI可见度真实检测"
+                    description="实际调用多个AI模型提问，检测品牌是否被提及"
+                  />
+
+                  <div className="mt-4 p-3 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-700 mb-4">
+                    检测方式：向 DeepSeek、Gemini、GPT-4o 三个AI模型分别提出行业相关问题，分析品牌在AI回复中的提及情况
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                    {report.realTestResults.aiVisibility?.models.map(mr => (
+                      <div key={mr.model} className="rounded-xl border border-gray-200 p-4 text-center">
+                        <div className="text-lg font-bold text-gray-900">{mr.modelName}</div>
+                        <div className="text-3xl font-bold mt-2" style={{ color: mr.mentionRate >= 60 ? '#10b981' : mr.mentionRate >= 30 ? '#f59e0b' : '#ef4444' }}>
+                          {mr.mentionRate}%
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">品牌提及率</div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          {mr.tests.filter(t => t.brandMentioned).length}/{mr.tests.length} 个问题提及品牌
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="space-y-4">
+                    {report.realTestResults.aiVisibility?.models.map(mr => (
+                      <div key={mr.model} className="rounded-xl border border-gray-200 overflow-hidden">
+                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900 text-sm">{mr.modelName}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">{mr.model}</span>
+                          </div>
+                          <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${
+                            mr.mentionRate >= 60 ? 'bg-emerald-100 text-emerald-700' :
+                            mr.mentionRate >= 30 ? 'bg-amber-100 text-amber-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            提及率 {mr.mentionRate}%
+                          </span>
+                        </div>
+                        <div className="divide-y divide-gray-100">
+                          {mr.tests.map((test, ti) => (
+                            <div key={ti} className="px-4 py-3">
+                              <div className="flex items-start gap-2 mb-2">
+                                <span className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs ${
+                                  test.brandMentioned ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
+                                }`}>
+                                  {test.brandMentioned ? '✓' : '✕'}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium text-gray-900">{test.question}</div>
+                                  <div className="text-xs text-gray-500 mt-0.5">
+                                    {test.brandMentioned
+                                      ? `品牌被提及${test.mentionPosition > 0 ? `（第${test.mentionPosition}位）` : ''}`
+                                      : '品牌未被提及'}
+                                    {test.competitorMentions.length > 0 && (
+                                      <span className="ml-2 text-amber-600">竞品出现: {test.competitorMentions.join('、')}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              {test.response && (
+                                <div className="ml-7 text-xs text-gray-500 bg-gray-50 rounded-lg p-3 leading-relaxed max-h-32 overflow-y-auto">
+                                  {test.response}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 内容覆盖真实检测 */}
+                <div className="rounded-2xl bg-white border border-gray-200 p-6 shadow-sm">
+                  <PageHeader
+                    title="📊 内容覆盖真实检测"
+                    description="通过搜索引擎查询品牌在各平台的内容分布"
+                  />
+
+                  <div className="mt-4 p-3 rounded-lg bg-green-50 border border-green-200 text-xs text-green-700 mb-4">
+                    检测方式：通过Bing搜索引擎查询 "品牌名 site:平台域名"，统计各平台搜索结果数量
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">平台</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">搜索查询</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">结果数量</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">覆盖状态</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">热门结果</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {report.realTestResults.contentCoverage?.platforms.map((pr, pi) => (
+                          <tr key={pi} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                            <td className="py-3 px-4 font-medium text-gray-900">{pr.platformName}</td>
+                            <td className="py-3 px-4 text-gray-500 text-xs font-mono">{pr.query}</td>
+                            <td className="py-3 px-4 text-gray-900">{pr.resultCount > 0 ? pr.resultCount.toLocaleString() : '0'}</td>
+                            <td className="py-3 px-4">
+                              {pr.resultCount > 0 || pr.topResults.length > 0 ? (
+                                <span className="inline-flex items-center gap-1 text-emerald-600 text-xs">
+                                  <CheckCircle2 className="w-3.5 h-3.5" /> 有内容
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-red-500 text-xs">
+                                  <XCircle className="w-3.5 h-3.5" /> 未覆盖
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              {pr.topResults.length > 0 ? (
+                                <div className="space-y-1">
+                                  {pr.topResults.slice(0, 2).map((r, ri) => (
+                                    <div key={ri} className="text-xs text-blue-600 truncate max-w-[200px]">
+                                      <a href={r.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                        {r.title.slice(0, 30)}...
+                                      </a>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-400">无结果</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="mt-4 p-4 rounded-xl bg-gray-50 border border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">整体内容覆盖率</span>
+                      <span className="text-lg font-bold" style={{ color: (report.realTestResults.contentCoverage?.overallCoverage ?? 0) >= 60 ? '#10b981' : '#f59e0b' }}>
+                        {report.realTestResults.contentCoverage?.overallCoverage ?? 0}%
+                      </span>
+                    </div>
+                    <ProgressBar
+                      value={report.realTestResults.contentCoverage?.overallCoverage ?? 0}
+                      color="#10b981"
+                      size="md"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-2xl bg-white border border-gray-200 p-12 text-center shadow-sm">
+                <Eye className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">暂无真实检测数据</h3>
+                <p className="text-sm text-gray-500">此报告使用AI估算生成，重新发起体检可获取真实检测数据</p>
               </div>
             )}
           </motion.div>

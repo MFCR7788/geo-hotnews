@@ -1,11 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../db.js';
 import { requireGeoAccess } from '../middleware/auth.js';
-import { analyzeGeoReport } from '../services/ai.js';
+import { runRealGeoCheck } from '../services/geo-check-real.js';
 
 const router = Router();
 
-// GET /api/geo-check/reports
 router.get('/reports', requireGeoAccess, async (req: Request, res: Response) => {
   try {
     const { page = '1', limit = '20' } = req.query;
@@ -28,7 +27,6 @@ router.get('/reports', requireGeoAccess, async (req: Request, res: Response) => 
   }
 });
 
-// GET /api/geo-check/reports/:id
 router.get('/reports/:id', requireGeoAccess, async (req: Request, res: Response) => {
   try {
     const report = await prisma.geoReport.findFirst({
@@ -41,7 +39,6 @@ router.get('/reports/:id', requireGeoAccess, async (req: Request, res: Response)
   }
 });
 
-// POST /api/geo-check/check
 router.post('/check', requireGeoAccess, async (req: Request, res: Response) => {
   try {
     const { brand, industry, platforms, keywords, competitors } = req.body;
@@ -58,8 +55,11 @@ router.post('/check', requireGeoAccess, async (req: Request, res: Response) => {
       },
     });
 
-    // 异步调用 AI 分析（不阻塞响应）
-    analyzeGeoReport(brand, industry, keywords || [], platforms || [], competitors)
+    const competitorList: string[] = competitors
+      ? (typeof competitors === 'string' ? JSON.parse(competitors) : competitors)
+      : [];
+
+    runRealGeoCheck(brand, industry, keywords || [], platforms || [], competitorList)
       .then(async (result) => {
         try {
           await prisma.geoReport.update({
@@ -71,6 +71,7 @@ router.post('/check', requireGeoAccess, async (req: Request, res: Response) => {
               summary: result.summary,
               suggestions: JSON.stringify(result.suggestions),
               keywordDetails: JSON.stringify(result.keywordDetails),
+              testResults: JSON.stringify(result.testResults),
               completedAt: new Date(),
             },
           });
@@ -80,13 +81,13 @@ router.post('/check', requireGeoAccess, async (req: Request, res: Response) => {
         }
       })
       .catch(async (error) => {
-        console.error('[GEO Check] AI analysis failed:', error);
+        console.error('[GEO Check] Real check failed:', error);
         try {
           await prisma.geoReport.update({
             where: { id: report.id },
             data: {
               status: 'failed',
-              summary: 'AI分析失败，请稍后重试',
+              summary: 'GEO检测失败，请稍后重试',
             },
           });
         } catch (e) {
@@ -101,7 +102,6 @@ router.post('/check', requireGeoAccess, async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/geo-check/reports/:id
 router.delete('/reports/:id', requireGeoAccess, async (req: Request, res: Response) => {
   try {
     const report = await prisma.geoReport.findFirst({

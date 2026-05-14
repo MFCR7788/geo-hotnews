@@ -68,7 +68,7 @@ async function callOpenRouterRaw(
 /**
  * 带指数退避重试的 OpenRouter 调用
  */
-async function callOpenRouter(
+export async function callOpenRouter(
   messages: OpenRouterMessage[],
   options: { temperature?: number; maxTokens?: number; model?: string } = {},
   retries = 3

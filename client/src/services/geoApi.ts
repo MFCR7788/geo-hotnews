@@ -84,6 +84,7 @@ export interface GeoReportItem {
   summary?: string
   suggestions?: string // JSON string
   keywordDetails?: string // JSON string
+  testResults?: string // JSON: 真实检测原始数据
   platformScores?: Record<string, number> | string
   keywordCoverage?: KeywordCoverageItem[] | string
   createdAt: string

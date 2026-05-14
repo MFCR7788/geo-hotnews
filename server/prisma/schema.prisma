@@ -454,6 +454,7 @@ model GeoReport {
   summary      String?
   suggestions  String?  // JSON array
   keywordDetails String? // JSON object
+  testResults  String?  // JSON: 真实检测原始数据(AI模型回复、搜索结果等)
   createdAt    DateTime @default(now())
   completedAt  DateTime?
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
