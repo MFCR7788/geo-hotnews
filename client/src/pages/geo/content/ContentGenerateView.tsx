@@ -55,6 +55,17 @@ const TEMPLATE_CATEGORIES: { label: string; value: string }[] = [
 
 const STEP_TITLES = ['基本信息', '品牌信息', '高级设置', '生成结果']
 
+function parseVariables(variables: string | null | undefined): string {
+  if (!variables) return '无'
+  try {
+    const parsed = JSON.parse(variables)
+    if (Array.isArray(parsed)) return parsed.join('、')
+    return String(parsed)
+  } catch {
+    return variables.replace(/[\[\]]/g, '').replace(/,/g, '、')
+  }
+}
+
 export default function ContentGenerateView() {
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
@@ -382,8 +393,7 @@ export default function ContentGenerateView() {
                   </div>
                 )}
                 <div style={{ fontSize: '12px', marginBottom: '4px', color: GRAY_500 }}>
-                  <span style={{ fontWeight: 500 }}>变量：</span>{selectedTemplate.variables ? JSON.parse(selectedTemplate.variables).join('、') : '无'}
-                </div>
+                  <span style={{ fontWeight: 500 }}>变量：</span>{parseVariables(selectedTemplate.variables)}</div>
                 <div style={{ fontSize: '12px', color: APPLE_BLUE }}>
                   <span style={{ fontWeight: 500 }}>提示词：</span><span style={{
                     display: '-webkit-box',
